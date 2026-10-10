@@ -1,0 +1,776 @@
+import Phaser from "phaser";
+import {
+  ASSISTANT_HOME,
+  BREEDS,
+  Breed,
+  COLORS as C,
+  DASH_COOLDOWN,
+  DASH_TIME,
+  DAYS,
+  DAY_LENGTH,
+  DECOR_TIP_BONUS,
+  DayDef,
+  H,
+  ITEM_INFO,
+  ItemId,
+  PASS_Y,
+  PATIENCE_MULT,
+  PLAYER_START,
+  SEATS,
+  STATION_DEFS,
+  STEP,
+  TABLES,
+  W,
+  comboMult,
+} from "../config";
+import { makeCafeBg } from "../art/background";
+import { boil } from "../art/textures";
+import { World, Nav } from "../game/world";
+import { Player } from "../game/corgi";
+import { Customer } from "../game/customer";
+import { Station } from "../game/station";
+import { Assistant, EventDirector } from "../game/events";
+import { Tutorial } from "../game/tutorial";
+import { Controls } from "../input";
+import { audio } from "../audio";
+import { save } from "../save";
+import { burst, button, floatText, puff, scrap, shake, toggle, txt } from "../ui";
+
+export interface DayStats {
+  day: number;
+  served: number;
+  missed: number;
+  mistakes: number;
+  earned: number;
+  tips: number;
+  bestCombo: number;
+  heists: number;
+  goal: number;
+}
+
+interface Target {
+  label: string;
+  ok: boolean;
+  run?: () => void;
+  x: number;
+  y: number;
+  score: number;
+}
+
+export class GameScene extends Phaser.Scene {
+  dayIdx = 0;
+  def!: DayDef;
+  tutorialMode = false;
+  world!: World;
+  nav!: Nav;
+  player!: Player;
+  stations: Station[] = [];
+  pads: Station[] = [];
+  customers: Customer[] = [];
+  assistant: Assistant | null = null;
+  director!: EventDirector;
+  controls!: Controls;
+  tutorial?: Tutorial;
+  stats!: DayStats;
+  combo = 0;
+  dayT = 0;
+  spawnT = 0;
+  acc = 0;
+  paused = false;
+  ending = false;
+  endT = 0;
+  zoomLoop = [
+    { x: 160, y: 300 },
+    { x: 640, y: 290 },
+    { x: 1150, y: 300 },
+    { x: 1160, y: 480 },
+    { x: 1150, y: 665 },
+    { x: 640, y: 670 },
+    { x: 160, y: 665 },
+    { x: 150, y: 480 },
+  ];
+  // HUD
+  private hud!: {
+    day: Phaser.GameObjects.Text;
+    time: Phaser.GameObjects.Text;
+    coins: Phaser.GameObjects.Text;
+    goal: Phaser.GameObjects.Graphics;
+    combo: Phaser.GameObjects.Container;
+    comboT: Phaser.GameObjects.Text;
+    clock: Phaser.GameObjects.Graphics;
+    mute: ReturnType<typeof button>;
+  };
+  private prompt!: Phaser.GameObjects.Container;
+  private promptBg!: Phaser.GameObjects.Graphics;
+  private promptT!: Phaser.GameObjects.Text;
+  private pauseLayer?: Phaser.GameObjects.Container;
+  private pawFlip = 1;
+  private lastTarget: Target | null = null;
+
+  constructor() {
+    super("Game");
+  }
+
+  init(data: { day?: number; tutorial?: boolean }) {
+    this.tutorialMode = !!data.tutorial;
+    this.dayIdx = Phaser.Math.Clamp(data.day ?? 0, 0, DAYS.length - 1);
+    this.def = DAYS[this.tutorialMode ? 0 : this.dayIdx];
+    this.stations = [];
+    this.pads = [];
+    this.customers = [];
+    this.assistant = null;
+    this.tutorial = undefined;
+    this.combo = 0;
+    this.dayT = this.tutorialMode ? 0 : -2.5;
+    this.spawnT = 2;
+    this.acc = 0;
+    this.paused = false;
+    this.ending = false;
+    this.endT = 0;
+    this.pauseLayer = undefined;
+    this.lastTarget = null;
+    this.stats = { day: this.dayIdx, served: 0, missed: 0, mistakes: 0, earned: 0, tips: 0, bestCombo: 0, heists: 0, goal: this.def.goal };
+  }
+
+  get menu(): ItemId[] {
+    return this.def.menu;
+  }
+  get fancyAllowed() {
+    return this.def.breeds.includes("poodle");
+  }
+  get patienceFrozen() {
+    return this.tutorialMode;
+  }
+  get decorMult() {
+    return 1 + save.data.decor.length * DECOR_TIP_BONUS;
+  }
+
+  create() {
+    save.applyAudio();
+    this.add.image(0, 0, makeCafeBg(this)).setOrigin(0).setDepth(-10);
+    this.world = new World();
+    this.nav = new Nav(this.world);
+
+    // furniture
+    for (const t of TABLES) boil(this, t.x, t.y, "table").setDepth(t.y + 20);
+    // decorations
+    const d = save.data.decor;
+    if (d.includes("lights")) boil(this, 650, 152, "deco_lights").setOrigin(0.5, 0).setScale(1.08, 0.8).setDepth(3);
+    if (d.includes("bunting")) boil(this, 650, 264, "deco_bunting").setOrigin(0.5, 0).setScale(1.08, 0.7).setDepth(4);
+    if (d.includes("plant")) {
+      boil(this, 1160, 700, "deco_plant").setOrigin(0.5, 1).setScale(0.75).setDepth(700);
+      boil(this, 132, 700, "deco_plant").setOrigin(0.5, 1).setScale(0.6).setDepth(700).setFlipX(true);
+    }
+    if (d.includes("portrait")) boil(this, 46, 470, "deco_portrait").setScale(0.7).setDepth(2);
+
+    // stations
+    for (const sd of STATION_DEFS) {
+      const isPad = sd.id === "padA" || sd.id === "padB";
+      const locked = !this.tutorialMode && sd.unlock !== null && !this.def.menu.includes(sd.unlock);
+      const lockedT = this.tutorialMode && sd.unlock !== null;
+      const s = new Station(this, sd.id, sd.x, locked || lockedT, isPad ? PASS_Y + 11 : undefined);
+      this.stations.push(s);
+      if (isPad) this.pads.push(s);
+    }
+
+    this.player = new Player(this, PLAYER_START.x, PLAYER_START.y, save.data.apron);
+    this.player.capacity = save.data.upgrades.carry > 0 ? 2 : 1;
+    if (save.data.upgrades.assistant > 0 && !this.tutorialMode) this.assistant = new Assistant(this, ASSISTANT_HOME);
+
+    this.director = new EventDirector(this, this.tutorialMode ? [] : this.def.events);
+    this.controls = new Controls(this);
+    this.buildHud();
+    this.buildPrompt();
+
+    if (this.tutorialMode) this.tutorial = new Tutorial(this);
+    else this.dayIntro();
+
+    audio.music(this.tutorialMode ? "title" : this.dayIdx === 6 ? "brunch" : "day");
+
+    // pause when the tab/window loses focus
+    const onBlur = () => this.pause(true);
+    this.game.events.on(Phaser.Core.Events.BLUR, onBlur);
+    this.game.events.on(Phaser.Core.Events.HIDDEN, onBlur);
+    this.events_cleanup = () => {
+      this.game.events.off(Phaser.Core.Events.BLUR, onBlur);
+      this.game.events.off(Phaser.Core.Events.HIDDEN, onBlur);
+    };
+    this.events_on_shutdown();
+    (window as unknown as { __corgi: unknown }).__corgi = { scene: this };
+  }
+
+  private events_cleanup: () => void = () => {};
+  private events_on_shutdown() {
+    this.sys.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events_cleanup();
+      this.tweens.killAll();
+    });
+  }
+
+  // =================================================================== HUD
+  private buildHud() {
+    const depth = 9500;
+    const dayS = scrap(this, 200, 28, 190, 40, -2, false).setDepth(depth);
+    const day = txt(this, 0, 2, "", 22, C.ink, true);
+    dayS.add(day);
+    const clockS = scrap(this, 392, 28, 150, 40, 1.5, false).setDepth(depth);
+    const clock = this.add.graphics();
+    const time = txt(this, 18, 2, "", 26, C.ink, true);
+    clockS.add([clock, time]);
+    const coinS = scrap(this, 604, 28, 230, 40, -1, false).setDepth(depth);
+    const coinIcon = this.add.image(-90, 2, "coin", 0).setScale(0.9);
+    const coins = txt(this, 10, 0, "", 24, C.ink, true);
+    const goal = this.add.graphics();
+    coinS.add([coinIcon, coins, goal]);
+    const combo = this.add.container(822, 30).setDepth(depth);
+    const comboBg = this.add.image(0, 0, "star", 0).setScale(2.2);
+    const comboT = txt(this, 0, 2, "", 22, C.ink, true, { stroke: "#fff", strokeThickness: 5 });
+    combo.add([comboBg, comboT]);
+    combo.setVisible(false);
+    const pauseB = button(this, 1130, 30, 60, 36, "II", "#fffaf0", () => this.pause(!this.paused), 24).setDepth(depth);
+    pauseB.setName("pauseBtn");
+    const mute = button(this, 1222, 30, 60, 36, save.data.settings.muted ? "×♪" : "♪", "#fffaf0", () => this.toggleMute(), 24).setDepth(depth);
+    this.hud = { day, time, coins, goal, combo, comboT, clock, mute };
+    if (this.tutorialMode) {
+      day.setText("Training day");
+      button(this, 1010, 30, 120, 36, "Skip ›", "#fffaf0", () => this.tutorial?.finish(), 22).setDepth(depth);
+    } else day.setText(`Day ${this.dayIdx + 1} · ${this.def.name}`);
+    if (day.width > 175) day.setScale(175 / day.width);
+  }
+
+  toggleMute() {
+    save.data.settings.muted = !save.data.settings.muted;
+    save.write();
+    save.applyAudio();
+    this.hud.mute.label.setText(save.data.settings.muted ? "×♪" : "♪");
+  }
+
+  private updateHud() {
+    const h = this.hud;
+    const left = this.tutorialMode ? DAY_LENGTH : Math.max(0, DAY_LENGTH - Math.max(0, this.dayT));
+    const m = Math.floor(left / 60);
+    const s = Math.floor(left % 60);
+    h.time.setText(this.tutorialMode ? "∞" : `${m}:${s.toString().padStart(2, "0")}`);
+    h.time.setColor(left < 20 && !this.tutorialMode ? C.coral : C.ink);
+    const g = h.clock;
+    g.clear();
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(-44, 2, 14);
+    g.fillStyle(left < 20 ? 0xf2786b : 0x7fcfb0, 1);
+    g.slice(-44, 2, 14, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (left / DAY_LENGTH), false);
+    g.fillPath();
+    g.lineStyle(2.5, 0x2b2622, 1);
+    g.strokeCircle(-44, 2, 14);
+    h.coins.setText(this.tutorialMode ? `${this.stats.earned}` : `${this.stats.earned} / ${this.def.goal}`);
+    const gg = h.goal;
+    gg.clear();
+    const f = Math.min(1, this.stats.earned / this.def.goal);
+    gg.fillStyle(0xefe5cc, 1).fillRoundedRect(-70, 13, 170, 6, 3);
+    gg.fillStyle(f >= 1 ? 0x7fcfb0 : 0xe39b4f, 1).fillRoundedRect(-70, 13, Math.max(4, 170 * f), 6, 3);
+    h.combo.setVisible(this.combo >= 2);
+    h.comboT.setText(`x${comboMult(this.combo).toFixed(2).replace(/0$/, "")}`);
+    h.combo.angle = Math.sin(this.time.now / 300) * 6;
+    this.controls.drawDashCooldown(this.player.dashCd / DASH_COOLDOWN[save.data.upgrades.dash]);
+  }
+
+  private buildPrompt() {
+    this.prompt = this.add.container(0, 0).setDepth(9000).setVisible(false);
+    this.promptBg = this.add.graphics();
+    this.promptT = txt(this, 0, 0, "", 19, C.ink);
+    this.prompt.add([this.promptBg, this.promptT]);
+  }
+
+  private showPrompt(t: Target | null) {
+    if (!t || this.ending) {
+      this.prompt.setVisible(false);
+      return;
+    }
+    const key = t.ok ? `[${this.controls.interactLabel}] ` : "";
+    const str = key + t.label;
+    if (this.promptT.text !== str || !this.prompt.visible) {
+      this.promptT.setText(str);
+      this.promptT.setColor(t.ok ? C.ink : C.inkSoft);
+      const w = this.promptT.width + 22;
+      const g = this.promptBg;
+      g.clear();
+      g.fillStyle(0xfffaf0, 0.96).fillRoundedRect(-w / 2, -16, w, 32, 10);
+      g.lineStyle(2.5, t.ok ? 0x4fae8c : 0x9b8f86, 1).strokeRoundedRect(-w / 2, -16, w, 32, 10);
+      this.prompt.setVisible(true);
+      if (this.lastTarget?.label !== t.label) {
+        this.prompt.setScale(0.85);
+        this.tweens.add({ targets: this.prompt, scale: 1, duration: 120 });
+      }
+    }
+    const w = this.promptT.width + 22;
+    this.prompt.setPosition(Phaser.Math.Clamp(t.x, 110 + w / 2, 1190 - w / 2), t.y);
+  }
+
+  // =================================================================== intro / banners
+  private dayIntro() {
+    const d = this.def;
+    this.banner(`Day ${this.dayIdx + 1}: ${d.name}`, d.newThing ? `New: ${d.newThing}` : d.subtitle, this.dayIdx === 6 ? C.coral : C.caramel, 2600);
+  }
+
+  banner(title: string, sub: string, color: string, ms = 2300) {
+    const c = scrap(this, W / 2, H / 2 - 40, 620, 150, -2, true).setDepth(9400);
+    const t = txt(this, 0, -22, title, 54, color, true, { stroke: C.ink, strokeThickness: 3 });
+    const s = txt(this, 0, 36, sub, 22, C.ink, false, { wordWrap: { width: 560 } });
+    c.add([t, s]);
+    c.setScale(0.4).setAlpha(0);
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, angle: 1, duration: 260, ease: "Back.out" });
+    this.tweens.add({ targets: c, y: -120, alpha: 0, delay: ms, duration: 380, ease: "Quad.in", onComplete: () => c.destroy() });
+  }
+
+  floatAt(x: number, y: number, s: string, color: string = C.caramelDark) {
+    floatText(this, x, y, s, color, 24, 40);
+  }
+  shakeSmall() {
+    shake(this, 150, 0.004);
+  }
+
+  // =================================================================== pause
+  pause(on: boolean) {
+    if (on === this.paused || this.ending) return;
+    if (on && this.tutorial?.finished) return;
+    this.paused = on;
+    this.controls.clear();
+    if (on) {
+      this.tweens.pauseAll();
+      this.buildPauseLayer();
+    } else {
+      this.tweens.resumeAll();
+      this.pauseLayer?.destroy();
+      this.pauseLayer = undefined;
+    }
+  }
+
+  private buildPauseLayer() {
+    const L = this.add.container(0, 0).setDepth(20000);
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x2b2622, 0.35).setInteractive();
+    const panel = scrap(this, W / 2, H / 2, 470, 500, -1.5, true);
+    L.add([dim, panel]);
+    const t = txt(this, W / 2, H / 2 - 200, "Paused", 60, C.caramel, true, { stroke: C.ink, strokeThickness: 3 });
+    const sub = txt(this, W / 2, H / 2 - 152, "the loaves will wait. (they won't, but time is frozen)", 18, C.inkSoft);
+    const resume = button(this, W / 2, H / 2 - 92, 260, 54, "Resume", C.mint, () => this.pause(false), 30);
+    const restart = button(this, W / 2, H / 2 - 26, 260, 50, this.tutorialMode ? "Restart tutorial" : "Restart day", "#f6c453", () => {
+      this.scene.restart({ day: this.dayIdx, tutorial: this.tutorialMode });
+    }, 26);
+    const s = save.data.settings;
+    const music = toggle(this, W / 2, H / 2 + 34, "Music", () => s.music, (v) => ((s.music = v), save.write(), save.applyAudio()));
+    const sfx = toggle(this, W / 2, H / 2 + 84, "Sound effects", () => s.sfx, (v) => ((s.sfx = v), save.write(), save.applyAudio()));
+    const rm = toggle(this, W / 2, H / 2 + 134, "Reduced motion", () => s.reducedMotion, (v) => ((s.reducedMotion = v), save.write()));
+    const quit = button(this, W / 2, H / 2 + 196, 220, 44, "Quit to title", C.coral, () => {
+      audio.music("title");
+      this.scene.start("Title");
+    }, 22);
+    L.add([t, sub, resume, restart, music, sfx, rm, quit]);
+    // keep pause menu tweens alive while gameplay tweens are paused
+    for (const o of [resume, restart, music, sfx, rm, quit]) {
+      o.on("pointerover", () => this.tweens.resumeAll());
+    }
+    this.pauseLayer = L;
+  }
+
+  // =================================================================== loop
+  update(_time: number, delta: number) {
+    this.controls.update();
+    if (this.controls.takePause()) this.pause(!this.paused);
+    if (this.paused) {
+      // allow keyboard resume via SPACE as well
+      if (this.controls.takeInteract()) this.pause(false);
+      return;
+    }
+    this.acc += Math.min(delta / 1000, 0.1);
+    let n = 0;
+    while (this.acc >= STEP && n < 8) {
+      this.step(STEP);
+      this.acc -= STEP;
+      n++;
+    }
+    // presentation
+    this.player.sync();
+    const held = new Set(this.player.items);
+    for (const c of this.customers) c.setHighlight(held);
+    const t = this.ending ? null : this.findTarget();
+    this.showPrompt(t);
+    this.lastTarget = t;
+    this.updateHud();
+    this.tutorial?.update();
+  }
+
+  private step(dt: number) {
+    if (this.ending) {
+      this.endT += dt;
+      for (const c of this.customers) c.update(dt);
+      this.movePlayer(dt);
+      if (this.endT > 2.8) this.finishDay();
+      return;
+    }
+    if (!this.tutorialMode) this.dayT += dt;
+
+    // spawns
+    if (!this.tutorialMode && this.dayT > 0 && this.dayT < DAY_LENGTH - 12) {
+      this.spawnT -= dt;
+      if (this.spawnT <= 0) {
+        if (this.trySpawn()) this.spawnT = Phaser.Math.FloatBetween(this.def.spawn[0], this.def.spawn[1]);
+        else this.spawnT = 1.5;
+      }
+    }
+    this.director.update(dt, this.dayT, this.dayT < DAY_LENGTH - 15);
+    this.movePlayer(dt);
+
+    if (this.controls.takeInteract()) {
+      const t = this.findTarget();
+      if (t?.ok && t.run) {
+        t.run();
+      } else if (t && !t.ok) {
+        audio.play("wrong");
+        this.tweens.add({ targets: this.prompt, x: this.prompt.x + 5, yoyo: true, repeat: 2, duration: 40 });
+      }
+    }
+
+    for (const c of this.customers) {
+      c.update(dt);
+      this.world.setDynamic(`c${c.id}`, c.solidRect());
+    }
+    for (const c of this.customers.filter((c) => c.state === "gone")) {
+      this.world.setDynamic(`c${c.id}`, null);
+      c.destroy();
+    }
+    this.customers = this.customers.filter((c) => c.state !== "gone");
+    for (const s of this.stations) s.update(dt);
+    this.assistant?.update(dt);
+
+    if (!this.tutorialMode && this.dayT >= DAY_LENGTH) this.endDay();
+  }
+
+  private movePlayer(dt: number) {
+    const p = this.player;
+    const lvl = save.data.upgrades.dash;
+    const mv = this.ending ? new Phaser.Math.Vector2() : this.controls.move;
+    p.dashCd = Math.max(0, p.dashCd - dt);
+    if (p.stunT > 0) p.stunT -= dt;
+    if (!this.ending && this.controls.takeDash()) {
+      if (p.dashCd <= 0 && p.stunT <= 0) {
+        p.dashT = DASH_TIME[lvl];
+        p.dashCd = DASH_COOLDOWN[lvl];
+        if (mv.lengthSq() > 0.01) p.dashDir.copy(mv).normalize();
+        else p.dashDir.set(p.rig.facing, 0);
+        audio.play("dash");
+        if (this.tutorial) this.tutorial.dashSeen = true;
+      }
+    }
+    if (p.dashT > 0) {
+      p.dashT -= dt;
+      p.vx = p.dashDir.x * 800;
+      p.vy = p.dashDir.y * 800;
+      p.pawT -= dt;
+      if (p.pawT <= 0) {
+        p.pawT = 0.045;
+        this.pawPrint(p.x, p.y, p.dashDir);
+      }
+    } else if (p.stunT > 0) {
+      p.vx *= Math.pow(0.02, dt);
+      p.vy *= Math.pow(0.02, dt);
+    } else {
+      const k = Math.min(1, dt * 18);
+      p.vx += (mv.x * p.speed - p.vx) * k;
+      p.vy += (mv.y * p.speed - p.vy) * k;
+    }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    this.world.resolve(p, p.r);
+    // anti-trap: if squeezed inside something (e.g. a growing dachshund), pop to the nearest free spot
+    if (this.world.overlaps(p, p.r)) {
+      p.stuckT += dt;
+      if (p.stuckT > 0.35) {
+        const f = this.nav.nearestFree(p.x, p.y, (q) => this.world.overlaps(q, p.r + 2));
+        p.x = f.x;
+        p.y = f.y;
+        p.stuckT = 0;
+        puff(this, p.x, p.y, 3);
+      }
+    } else p.stuckT = 0;
+    p.rig.animate(dt, p.vx, p.vy, p.speed, p.dashing);
+  }
+
+  private pawPrint(x: number, y: number, dir: Phaser.Math.Vector2) {
+    this.pawFlip *= -1;
+    const nx = -dir.y * 8 * this.pawFlip;
+    const ny = dir.x * 8 * this.pawFlip;
+    const s = this.add.image(x + nx, y + ny, "paw", 0).setDepth(1).setRotation(Math.atan2(dir.y, dir.x) + Math.PI / 2);
+    this.tweens.add({ targets: s, alpha: 0, duration: 900, delay: 200, onComplete: () => s.destroy() });
+  }
+
+  // =================================================================== interaction
+  findTarget(): Target | null {
+    const p = this.player;
+    const cands: Target[] = [];
+    const held = p.items;
+    for (const c of this.customers) {
+      if (!c.waiting) continue;
+      const d = c.distTo(p.x, p.y);
+      if (d > 78) continue;
+      const a = c.anchor;
+      const px = a.x;
+      const py = c.kind === "bigloaf" ? a.y + 30 : a.y + 34;
+      let match = -1;
+      for (let i = held.length - 1; i >= 0; i--)
+        if (c.needs(held[i]) >= 0) {
+          match = i;
+          break;
+        }
+      if (match >= 0) {
+        const it = held[match];
+        cands.push({ label: `serve ${ITEM_INFO[it].name}`, ok: true, run: () => this.serveFromPlayer(c, match), x: px, y: py, score: d - 40 });
+      } else if (held.length) {
+        const it = held[held.length - 1];
+        cands.push({ label: `give ${ITEM_INFO[it].name}…?`, ok: true, run: () => this.wrongGive(c, held.length - 1), x: px, y: py, score: d + 15 });
+      } else {
+        const names = [...new Set(c.remaining)].map((i) => ITEM_INFO[i].name).join(" + ");
+        cands.push({ label: `wants: ${names}`, ok: false, x: px, y: py, score: d + 30 });
+      }
+    }
+    for (const s of this.stations) {
+      const d = Math.hypot(p.x - s.ix, p.y - s.iy);
+      if (d > s.radius) continue;
+      const a = s.action(held, p.capacity);
+      if (!a) continue;
+      const isPad = s.id === "padA" || s.id === "padB";
+      cands.push({ ...a, x: s.x, y: isPad ? s.y - 36 : 140, score: d });
+    }
+    const nap = this.director.napTarget;
+    if (nap) {
+      const d = Math.hypot(p.x - nap.x, p.y - nap.y);
+      if (d < 90) cands.push({ label: `boop Mochi awake (${nap.boops}/3)`, ok: true, run: () => this.director.boop(), x: nap.x, y: nap.y - 56, score: d - 20 });
+    }
+    if (!cands.length) return null;
+    cands.sort((a, b) => (a.ok === b.ok ? a.score - b.score : a.ok ? -1 : 1));
+    return cands[0];
+  }
+
+  giveItem(it: ItemId, silent = false) {
+    const p = this.player;
+    if (p.items.length >= p.capacity) return false;
+    p.items.push(it);
+    p.refreshCarry(this);
+    p.rig.pop();
+    if (!silent) audio.play("pick");
+    return true;
+  }
+  takeItemAt(i: number): ItemId | undefined {
+    const p = this.player;
+    const [it] = p.items.splice(i, 1);
+    p.refreshCarry(this);
+    return it;
+  }
+  replaceItemAt(i: number, it: ItemId) {
+    this.player.items[i] = it;
+    this.player.refreshCarry(this);
+    this.player.rig.pop();
+  }
+
+  stationReady(s: Station) {
+    floatText(this, s.x, 46, "ready!", C.mintDark, 20, 20);
+  }
+
+  private serveFromPlayer(c: Customer, heldIdx: number) {
+    const it = this.takeItemAt(heldIdx)!;
+    this.serve(c, it, false);
+  }
+
+  /** Deliver an item to a customer (from the player or from Biscuit). */
+  serve(c: Customer, it: ItemId, byAssistant: boolean) {
+    const idx = c.needs(it);
+    if (idx < 0) return;
+    audio.play("place");
+    const complete = c.deliver(idx);
+    if (byAssistant) floatText(this, c.x, c.y - 120, "Biscuit delivered!", C.mintDark, 18, 30);
+    if (!complete) return;
+    const base = c.order.reduce((s, o) => s + ITEM_INFO[o].price, 0);
+    const tip = base * 0.6 * c.patienceFrac;
+    const mult = comboMult(this.combo);
+    const total = Math.max(1, Math.round((base + tip) * c.def.tip * mult * this.decorMult));
+    const tipPart = total - base;
+    this.combo++;
+    this.stats.bestCombo = Math.max(this.stats.bestCombo, this.combo);
+    this.stats.served++;
+    this.stats.tips += Math.max(0, tipPart);
+    this.addCoins(total, c.anchor.x, c.anchor.y - (c.kind === "bigloaf" ? 200 : 110), false);
+    audio.play("coin");
+    burst(this, c.anchor.x, c.anchor.y - 80, ["heart", "star", "star_mint"], c.kind === "bigloaf" ? 14 : 6);
+    if (this.combo >= 2) {
+      audio.play("combo", this.combo);
+      if (this.combo % 3 === 0 || this.combo === 2) {
+        floatText(this, c.anchor.x, c.anchor.y - 170, `COMBO ×${mult.toFixed(2).replace(/0$/, "")}!`, C.coral, 30, 50);
+        burst(this, 822, 30, ["star", "star_coral", "star_mint"], 10, 60);
+      }
+    }
+  }
+
+  addCoins(n: number, x: number, y: number, small = true) {
+    this.stats.earned += n;
+    floatText(this, x, y, `+${n}`, C.caramelDark, small ? 24 : 34, 60);
+    for (let i = 0; i < Math.min(6, Math.ceil(n / 6)); i++) {
+      const s = this.add.image(x, y, "coin", 0).setDepth(9600).setScale(0.7);
+      this.tweens.add({
+        targets: s,
+        x: 514 + Phaser.Math.Between(-6, 6),
+        y: 30,
+        duration: 500 + i * 70,
+        ease: "Cubic.in",
+        onComplete: () => {
+          s.destroy();
+          if (i === 0) this.tweens.add({ targets: this.hud.coins, scale: 1.25, yoyo: true, duration: 90 });
+        },
+      });
+    }
+  }
+
+  private wrongGive(c: Customer, heldIdx: number) {
+    const it = this.player.items[heldIdx];
+    c.wrong(it);
+    audio.play("wrong");
+    this.stats.mistakes++;
+    if (c.breed !== "retriever") {
+      if (this.combo >= 2) this.floatAt(this.player.x, this.player.y - 130, "combo dropped!", C.coral);
+      this.combo = 0;
+    }
+  }
+
+  customerTimedOut(c: Customer) {
+    c.leave(true);
+    this.stats.missed++;
+    if (this.combo >= 2) this.floatAt(c.x, c.y - 150, "combo lost!", C.coral);
+    this.combo = 0;
+    shake(this, 140, 0.003);
+  }
+
+  influencerPhoto(c: Customer) {
+    audio.play("camera");
+    const cam = boil(this, c.x + 30, c.y - 70, "camera").setDepth(4900);
+    const fl = this.add.image(c.x + 30, c.y - 70, "flash", 0).setDepth(4901).setScale(0.3);
+    this.tweens.add({ targets: fl, scale: 2.2, alpha: 0, duration: 380, onComplete: () => fl.destroy() });
+    this.tweens.add({ targets: cam, alpha: 0, delay: 900, duration: 300, onComplete: () => cam.destroy() });
+    const bonus = 6 + Math.round(this.combo * 1.5);
+    this.addCoins(bonus, c.x, c.y - 160);
+    floatText(this, c.x, c.y - 196, `#loafgoals · +${bonus} likes`, C.coral, 18, 30);
+  }
+
+  pupContact(x: number, y: number) {
+    const p = this.player;
+    if (p.dashing || p.stunT > 0) return;
+    const d = Math.hypot(p.x - x, p.y - y);
+    if (d > 34) return;
+    const nx = (p.x - x) / (d || 1);
+    const ny = (p.y - y) / (d || 1);
+    p.vx = nx * 420;
+    p.vy = ny * 420;
+    p.stunT = 0.35;
+    audio.play("bump");
+    shake(this, 120, 0.005);
+    floatText(this, p.x, p.y - 110, "bonk!", C.coral, 22, 30);
+  }
+
+  // =================================================================== spawning
+  private freeSeats(): number[] {
+    const used = new Set(this.customers.filter((c) => c.kind === "seat").map((c) => c.seat));
+    const out: number[] = [];
+    SEATS.forEach((s, i) => {
+      if (used.has(i)) return;
+      // don't spawn a customer on top of the player
+      if (Math.hypot(s.x - this.player.x, s.y - this.player.y) < 40) return;
+      out.push(i);
+    });
+    return out;
+  }
+
+  private pickOrderItem(exclude: ItemId[] = []): ItemId {
+    const menu = this.def.menu.filter((m) => !exclude.includes(m));
+    const prev = this.dayIdx > 0 ? DAYS[this.dayIdx - 1].menu : [];
+    const weights = menu.map((m) => (prev.includes(m) ? 1 : 2.4));
+    let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < menu.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return menu[i];
+    }
+    return menu[0];
+  }
+
+  private makeOrder(breed: Breed): ItemId[] {
+    if (breed === "bigloaf") {
+      const n = this.dayIdx >= 5 ? 4 : 3;
+      return Array.from({ length: n }, () => this.pickOrderItem());
+    }
+    const first: ItemId = breed === "poodle" ? "fancy" : this.pickOrderItem();
+    const order: ItemId[] = [first];
+    if (Math.random() < this.def.comboChance) order.push(this.pickOrderItem([first]));
+    if (this.dayIdx >= 5 && breed !== "poodle" && Math.random() < 0.12) order.push(this.pickOrderItem(order));
+    return order;
+  }
+
+  private patienceFor(breed: Breed, order: ItemId[]) {
+    const lvl = save.data.upgrades.patience;
+    const extra = order.reduce((s, o) => s + (o === "fancy" ? 0.5 : o === "latte" || o === "iced" ? 0.15 : 0), 0);
+    return this.def.patience * BREEDS[breed].patience * PATIENCE_MULT[lvl] * (1 + 0.55 * (order.length - 1) + extra);
+  }
+
+  private trySpawn(): boolean {
+    const active = this.customers.filter((c) => c.state !== "leave" && c.state !== "gone" && c.kind !== "bigloaf").length;
+    if (active >= this.def.maxCustomers) return false;
+    const pool = this.def.breeds.filter((b) => {
+      if (b === "dachshund") return !this.customers.some((c) => c.kind === "dachs");
+      return true;
+    });
+    let breed = Phaser.Utils.Array.GetRandom(pool) as Breed;
+    if (breed === "dachshund" && Math.random() < 0.5) breed = "beagle"; // dachshunds are a treat, not every time
+    if (breed !== "dachshund") {
+      const seats = this.freeSeats();
+      if (!seats.length) return false;
+      const seat = Phaser.Utils.Array.GetRandom(seats);
+      const order = this.makeOrder(breed);
+      this.customers.push(new Customer(this, breed, order, seat, this.patienceFor(breed, order)));
+    } else {
+      const order = this.makeOrder(breed);
+      this.customers.push(new Customer(this, breed, order, -1, this.patienceFor(breed, order)));
+    }
+    return true;
+  }
+
+  spawnBigLoaf(): boolean {
+    if (this.customers.some((c) => c.kind === "bigloaf")) return false;
+    const order = this.makeOrder("bigloaf");
+    this.customers.push(new Customer(this, "bigloaf", order, -1, this.patienceFor("bigloaf", order)));
+    return true;
+  }
+
+  spawnScripted(breed: Breed, order: ItemId[], seat: number) {
+    this.customers.push(new Customer(this, breed, order, seat, 999));
+  }
+
+  // =================================================================== day end
+  private endDay() {
+    if (this.ending) return;
+    this.ending = true;
+    this.endT = 0;
+    this.banner("Closing time!", "Flip the sign. Count the coins. Pet a loaf.", C.mint, 2200);
+    audio.play("win");
+    for (const c of this.customers) if (c.state === "wait" || c.state === "zoom" || c.state === "return" || c.state === "enter") c.leave(false);
+    this.director.forceEnd();
+    this.assistant?.reset();
+    for (const s of this.stations) s.clear();
+  }
+
+  private finishDay() {
+    if (!this.scene.isActive()) return;
+    const st = this.stats;
+    const d = save.data;
+    d.coins += st.earned;
+    d.totalEarned += st.earned;
+    const stars = st.earned >= st.goal * 1.4 ? 3 : st.earned >= st.goal ? 2 : st.earned >= st.goal * 0.5 ? 1 : 0;
+    d.stars[this.dayIdx] = Math.max(d.stars[this.dayIdx] ?? 0, stars);
+    d.day = Math.max(d.day, this.dayIdx + 1);
+    save.write();
+    this.scene.start("Results", { ...st, stars });
+  }
+}

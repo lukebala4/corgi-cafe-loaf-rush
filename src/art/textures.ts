@@ -51,7 +51,7 @@ const ink = C.ink;
 const cream = C.cream;
 
 // ---------------------------------------------------------------------------
-// Corgi (side view, facing right) — body, ears, legs, apron overlays
+// Corgi (side view, facing right)  -  body, ears, legs, apron overlays
 // ---------------------------------------------------------------------------
 function corgiBody(p: Pen, sleepy = false) {
   p.ellipse(15, 34, 10, 9, { fill: cream, w: 2.5 }); // tail fluff

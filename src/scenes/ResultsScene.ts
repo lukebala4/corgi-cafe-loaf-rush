@@ -16,7 +16,7 @@ export class ResultsScene extends Phaser.Scene {
     const def = DAYS[st.day];
     const p = scrap(this, 640, 350, 640, 520, -1.2, true);
     void p;
-    txt(this, 640, 140, `${def.name} — done!`, 56, C.caramel, true, { stroke: C.ink, strokeThickness: 3 });
+    txt(this, 640, 140, `${def.name}  -  done!`, 56, C.caramel, true, { stroke: C.ink, strokeThickness: 3 });
     const lines: [string, string][] = [
       ["Loaves served", `${st.served}`],
       ["Huffy exits", `${st.missed}`],

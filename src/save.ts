@@ -69,7 +69,7 @@ export const save: { data: SaveData; write(): void; reset(): void; hasProgress()
     try {
       localStorage.setItem(KEY, JSON.stringify(this.data));
     } catch {
-      /* storage may be unavailable (private mode) — the game still works */
+      /* storage may be unavailable (private mode)  -  the game still works */
     }
   },
   reset() {

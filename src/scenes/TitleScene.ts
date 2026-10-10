@@ -56,8 +56,7 @@ export class TitleScene extends Phaser.Scene {
     corgi.setDepth(0);
     cupFront.setDepth(1);
     // Match the handwritten lettering in the reference drawing without baking text into the texture.
-    const cupName = txt(this, cx, cy + 14, "Corgi\nLatte", 22, C.ink, false, {
-      lineSpacing: -4,
+    const cupName = txt(this, cx, cy + 16, "Corgi Latte", 24, C.ink, false, {
       stroke: "#fffaf0",
       strokeThickness: 2,
     }).setDepth(2).setAngle(-1);

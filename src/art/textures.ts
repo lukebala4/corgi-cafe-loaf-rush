@@ -1621,7 +1621,6 @@ export function buildTextures(scene: Phaser.Scene) {
       ],
       { w: 1, color: "rgba(0,0,0,0)" },
     );
-    p.rrect(46, 140, 208, 34, 14, { fill: C.mint, w: 3 });
     p.hatch(
       [
         [40, 190],

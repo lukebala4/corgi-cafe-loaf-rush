@@ -20,6 +20,8 @@ Seven shifts, Monday to Sunday Brunch, about three minutes each. Read the order 
 | Corgi Orange Cake | right side of the pastry case |
 | Chicken sourdough | toastie press (take it out before it burns) |
 
+While you play, a recipe strip at the bottom of the screen shows each ordered item, its station path and the next step for what is in your paw.
+
 Items unlock day by day. Real GBP prices and the full 61-item London menu are in the in-game **Menu** (title screen or pause menu); game coins are a separate fictional balance.
 
 ## Controls

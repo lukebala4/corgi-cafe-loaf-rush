@@ -25,6 +25,8 @@ import {
   enthusiastPick,
 } from "../config";
 import { ROLE_LOOKS } from "../art/humans";
+import { Crowd } from "../game/crowd";
+import { RecipeStrip } from "../game/recipes";
 import { openMenuInfo } from "../share";
 import { makeCafeBg } from "../art/background";
 import { boil } from "../art/textures";
@@ -74,6 +76,8 @@ export class GameScene extends Phaser.Scene {
   director!: EventDirector;
   controls!: Controls;
   tutorial?: Tutorial;
+  crowd!: Crowd;
+  recipes!: RecipeStrip;
   stats!: DayStats;
   combo = 0;
   dayT = 0;
@@ -84,14 +88,14 @@ export class GameScene extends Phaser.Scene {
   endT = 0;
   /** Staff zoomies lap: around the communal tables, clear of the window bar and the column. */
   zoomLoop = [
-    { x: 160, y: 300 },
+    { x: 122, y: 300 },
     { x: 640, y: 300 },
-    { x: 1140, y: 300 },
-    { x: 1140, y: 480 },
+    { x: 1108, y: 300 },
+    { x: 1108, y: 480 },
     { x: 900, y: 480 },
     { x: 900, y: 662 },
     { x: 400, y: 668 },
-    { x: 160, y: 660 },
+    { x: 122, y: 660 },
     { x: 160, y: 480 },
   ];
   // HUD
@@ -181,8 +185,12 @@ export class GameScene extends Phaser.Scene {
     if (save.data.upgrades.assistant > 0 && !this.tutorialMode) this.assistant = new Assistant(this, ASSISTANT_HOME);
 
     this.director = new EventDirector(this, this.tutorialMode ? [] : this.def.events);
+    // the crowd: people hanging out, vibe coding and visiting the corgis (busier as the week goes on)
+    const crowdCap = this.tutorialMode ? 3 : 5 + this.dayIdx;
+    this.crowd = new Crowd(this, crowdCap, Math.ceil(crowdCap * 0.5));
     this.controls = new Controls(this);
     this.buildHud();
+    this.recipes = new RecipeStrip(this);
     this.buildPrompt();
 
     if (this.tutorialMode) this.tutorial = new Tutorial(this);
@@ -374,7 +382,7 @@ export class GameScene extends Phaser.Scene {
     const restart = button(this, W / 2 - 98, H / 2 - 26, 186, 50, this.tutorialMode ? "Restart tutorial" : "Restart day", "#f6c453", () => {
       this.scene.restart({ day: this.dayIdx, tutorial: this.tutorialMode });
     }, this.tutorialMode ? 20 : 24);
-    const menuB = button(this, W / 2 + 98, H / 2 - 26, 186, 50, "London menu", C.orangeSoft, () => openMenuInfo(this), 24);
+    const menuB = button(this, W / 2 + 98, H / 2 - 26, 186, 50, "Today's menu", C.orangeSoft, () => openMenuInfo(this, undefined, { items: this.def.menu, dayName: this.tutorialMode ? "Training day" : this.def.name }), 24);
     const s = save.data.settings;
     const music = toggle(this, W / 2, H / 2 + 34, "Music", () => s.music, (v) => ((s.music = v), save.write(), save.applyAudio()));
     const sfx = toggle(this, W / 2, H / 2 + 84, "Sound effects", () => s.sfx, (v) => ((s.sfx = v), save.write(), save.applyAudio()));
@@ -417,6 +425,7 @@ export class GameScene extends Phaser.Scene {
     this.showPrompt(t);
     this.lastTarget = t;
     this.updateHud();
+    this.recipes.update();
     this.tutorial?.update();
   }
 
@@ -424,6 +433,7 @@ export class GameScene extends Phaser.Scene {
     if (this.ending) {
       this.endT += dt;
       for (const c of this.customers) c.update(dt);
+      this.crowd.update(dt, false);
       this.movePlayer(dt);
       if (this.endT > 2.8) this.finishDay();
       return;
@@ -463,6 +473,7 @@ export class GameScene extends Phaser.Scene {
     this.customers = this.customers.filter((c) => c.state !== "gone");
     for (const s of this.stations) s.update(dt);
     this.assistant?.update(dt);
+    this.crowd.update(dt, this.tutorialMode || this.dayT < DAY_LENGTH - 20);
 
     if (!this.tutorialMode && this.dayT >= DAY_LENGTH) this.endDay();
   }

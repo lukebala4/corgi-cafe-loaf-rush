@@ -8,6 +8,8 @@ The game is still the same Phaser 3 + TypeScript + Vite project: fixed 1280 x 72
 
 The café is now the orange Shoreditch room. Every animal is a real-shaped corgi (low loaf body, short thick legs, deep chest, large upright ears, foxlike muzzle, white blaze and chest, red-white or tricolour coat). Corgis run the café: the player barista, Biscuit the delivery helper, Mochi the napper, the croissant bandit and the zoomies pair are all staff. Every paying customer is a human. The menu is nine real items from the current official London menu, each with a coherent two or three step recipe. The title keeps the loved sleeping-corgi-in-a-cup composition, with the unsupported "Corgi Latte" caption corrected to "Corgi Cafe". A small sharing loop was added: a scorecard image drawn with the game's own art, shared only after a tap.
 
+**Crowd and atmosphere update.** The room now fills up with a young crowd who come in to hang out, vibe code on laptops, film the corgis and chat (they never order, so they never add pressure). A laptop lounge, merch shelf, neon tagline sign, paw prints, a lounge corgi (Pudding) and a door greeter corgi (Bean) were added. All floor and margin captions were removed so the room reads as a drawing, not a diagram. A recipe strip at the bottom of the screen names each ordered item, shows its station path using the station signs, and tells you the next step for what is in paw.
+
 ## 2. Reference-to-game spatial mapping
 
 The real room, seen from the street door, has the long counter on the **right**, communal seating to the left and centre, the rear wall at the back and the Renaissance mural along the long left wall. A fixed top-down notebook view cannot show four walls, so the room is rotated and unfolded as follows. This is a **camera adaptation**, not a claim about the real floor plan.
@@ -19,13 +21,15 @@ The real room, seen from the street door, has the long counter on the **right**,
 | Warm white rough brick behind the counter | Brick band along the top wall | Colour inferred |
 | Narrow white subway tile strip above orange panels | Tile strip y 58 to 96 behind the stations | |
 | Three portrait menu panels DRINKS / CORGI CAFE / FOOD | Hung on the brick above the espresso and cold bar area | Original drawings, no photo pixels |
-| Copper bell pendants over the counter | Three copper bells over the pass | |
+| Copper bell pendants over the counter | One copper bell over the pass, plus a dark neon board on the brick reading "where tech builders meet." | Tagline moved from the fascia to the neon board so both read cleanly |
 | Communal pale timber tables, thin dark legs, brown chairs | Three long tables with brown chairs at the six service seats | |
 | Sage dome lamps over tables | Sage domes drawn above each table | |
 | Slim pale column | Pillar stub between tables | |
 | Rear wall: orange 3D corgi figure installation, polaroid corkboard, picture string | Screen **left**: orange figure installation, polaroid board in the top-left corner, picture string | |
 | Long left wall: orange lower panelling / bench band | Screen **bottom**: orange bench band | The wall itself is "cut away" by the camera |
-| Renaissance corgi mural (long left wall) and Creation of Adam corgi ceiling | **Notebook margin sketches**, labelled "(moved to margin)" | Labelled camera adaptation; original pen sketches only |
+| Renaissance corgi mural (long left wall) | Gold-framed Renaissance corgi portrait doodled in the notebook margin, next to a sleepy corgi-in-a-cup doodle | Camera adaptation, no captions; original pen sketches only |
+| Sofa and lounge seating, corgi beds | Laptop lounge bottom left: orange rug, sage sofa, beanbag, corgi bed, water bowl and tennis ball | Game invention for atmosphere (not a claimed feature of the real room) |
+| Corgi Cafe merch (corduroy caps, mugs, totes) | Merch shelf just inside the door | Products inferred from the brief; drawn as original art |
 | Window bar with high stools | Window ledge near the shopfront with three stools, used by the visiting group | |
 
 **Inferred values (not measured):** room proportions, counter length, seat count, and all colours. Palette tokens used in `src/config.ts`: brand orange `#FF5C00` (digital token, not a paint code), wall `#F3EEE5`, tables `#CFA574`, floor `#A77850`, upholstery `#805B43`, sage `#96A486`, copper `#B7804B`.
@@ -98,8 +102,11 @@ Orders only use items unlocked that day, and stations for locked items show a "c
 | Dachshund blocking the aisle | Removed. Blocking is now Mochi the napping staff corgi |
 | The Big Loaf (giant customer) | Visiting group of three humans at the window bar with one group order |
 | Customers doing zoomies | Staff corgis do zoomies; seated humans react (patience paused) |
+| (new) Crowd | 12 non-paying young visitors: laptop coders, phone filmers, chatters. They sit behind the long tables, on the sofa and beanbag, and at the window bar (which they give up when a group is due). 5 on Monday rising to 11 on Sunday |
+| (new) Pudding | Red-and-white lounge corgi. Naps in the lounge bed, then trots over to a seated visitor for pats (hearts) |
+| (new) Bean | Tricolour staff corgi sitting by the door, wiggles and shows a heart for every arrival |
 
-Humans are original fictional people with varied skin tones, hair, clothes and ages, drawn in sitting and walking poses with neutral, happy and annoyed moods. No visitor portraits or personal data were used.
+Humans are original fictional people with varied skin tones, hair and clothes, skewing younger (curtain fringes, space buns, braids, oversized tees, puffers, varsity jackets, AirPods, white trainers), drawn in sitting and walking poses with neutral, happy and annoyed moods. No visitor portraits or personal data were used.
 
 ## 6. Sharing and replay loop
 

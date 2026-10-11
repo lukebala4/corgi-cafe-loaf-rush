@@ -1,4 +1,4 @@
-import { BACK_COUNTER, COLUMN, DOORWAYS, PASS_H, PASS_Y, PLAY, TABLES, TABLE_H } from "../config";
+import { BACK_COUNTER, COLUMN, DOORWAYS, MERCH, PASS_H, PASS_Y, PLAY, SOFA, TABLES, TABLE_H } from "../config";
 
 export interface Rect {
   x: number;
@@ -27,6 +27,9 @@ export class World {
     this.statics.push({ x: COLUMN.x - COLUMN.r, y: COLUMN.y - COLUMN.r, w: COLUMN.r * 2, h: COLUMN.r * 2, tag: "column" });
     // window bar along the street frontage, below the door
     this.statics.push({ x: 1010, y: 556, w: 190, h: 24, tag: "windowbar" });
+    // lounge sofa and the merch shelf by the door
+    this.statics.push({ x: SOFA.x, y: SOFA.y, w: SOFA.w, h: SOFA.h, tag: "sofa" });
+    this.statics.push({ x: MERCH.x, y: MERCH.y, w: MERCH.w, h: MERCH.h, tag: "merch" });
   }
 
   setDynamic(id: string, r: Rect | null) {

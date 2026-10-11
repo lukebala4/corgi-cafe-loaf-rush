@@ -92,6 +92,12 @@ export const SEATS: { x: number; y: number; side: -1 | 1 }[] = [
 ];
 export const COLUMN = { x: 640, y: 492, r: 9 }; // slim pale column mid-room
 export const GROUP_SPOT = { x: 1105, y: 615 }; // window bar by the street
+// Laptop lounge (bottom left): orange rug, sage sofa, beanbag and the café corgi's bed.
+export const LOUNGE = { x: 140, y: 478, w: 200, h: 112 };
+export const SOFA = { x: 156, y: 484, w: 146, h: 30 };
+export const CORGI_BED = { x: 184, y: 566 };
+// Merch shelf by the door (corduroy caps, mugs, totes).
+export const MERCH = { x: 1146, y: 290, w: 54, h: 110 };
 export const PLAYER_START = { x: 680, y: 195 };
 export const ASSISTANT_HOME = { x: 640, y: 300 };
 
@@ -175,15 +181,15 @@ export const STATION_DEFS: StationDef[] = [
 
 // Recipes, shown in the order bubble tooltip, the recipe card and the tutorial.
 export const RECIPE_HINTS: Partial<Record<ItemId, string>> = {
-  americano: "cup → espresso",
-  latte: "cup → milk → espresso",
-  icedlatte: "Latte → cold bar (over ice)",
-  pally: "Iced Latte → cold bar (pistachio + vanilla foam)",
-  daytona: "cup → cold bar (cold brew + coconut water)",
-  juicebox: "cup → blender (berries)",
-  croissant: "croissant basket",
-  cake: "cake dome",
-  sourdough: "press → wait (don't burn it!)",
+  americano: "cup from CUPS → ESPRESSO",
+  latte: "cup from CUPS → MILK → ESPRESSO (the corgi foam art pours itself)",
+  icedlatte: "make a Latte → COLD BAR (over ice)",
+  pally: "make an Iced Latte → COLD BAR again (pistachio + vanilla foam)",
+  daytona: "cup from CUPS → COLD BAR (cold brew + coconut water)",
+  juicebox: "cup from CUPS → BLENDER (berries)",
+  croissant: "grab one at CROISSANTS",
+  cake: "grab a slice at CAKE",
+  sourdough: "PRESS, then take it before it burns",
 };
 
 // ---------------------------------------------------------------------------

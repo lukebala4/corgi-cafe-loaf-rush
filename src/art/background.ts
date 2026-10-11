@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { Pen, Pt } from "./pen";
-import { COLORS as C, W, H, BACK_COUNTER, PASS_Y, PASS_H, DOORWAYS, PLAY, DOOR, TABLES, COLUMN, GROUP_SPOT } from "../config";
+import { COLORS as C, W, H, BACK_COUNTER, PASS_Y, PASS_H, DOORWAYS, PLAY, DOOR, TABLES, COLUMN, GROUP_SPOT, LOUNGE, SOFA, CORGI_BED, MERCH } from "../config";
 import { copperBell, flowerPot, polaroid, renaissanceCorgi } from "./textures";
 
 function paper(p: Pen, w: number, h: number, margin = true) {
@@ -60,7 +60,7 @@ const rect = (x: number, y: number, w: number, h: number): Pt[] => [
   [x, y + h],
 ];
 
-function label(c: CanvasRenderingContext2D, s: string, x: number, y: number, size: number, color: string, font = "Patrick Hand", rot = 0) {
+function label(c: CanvasRenderingContext2D, s: string, x: number, y: number, size: number, color: string, font = "Patrick Hand", rot = 0, outline?: string) {
   c.save();
   c.translate(x, y);
   c.rotate(rot);
@@ -68,7 +68,46 @@ function label(c: CanvasRenderingContext2D, s: string, x: number, y: number, siz
   c.fillStyle = color;
   c.textAlign = "center";
   c.textBaseline = "middle";
+  if (outline) {
+    c.strokeStyle = outline;
+    c.lineWidth = Math.max(2.5, size / 7);
+    c.lineJoin = "round";
+    c.strokeText(s, 0, 0);
+  }
   c.fillText(s, 0, 0);
+  c.restore();
+}
+
+/** Glowing orange neon lettering on a dark board. */
+function neon(c: CanvasRenderingContext2D, s: string, x: number, y: number, size: number) {
+  c.save();
+  c.font = `${size}px "Caveat Brush", cursive`;
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  c.shadowColor = "rgba(255,138,61,0.95)";
+  c.shadowBlur = 9;
+  c.fillStyle = "#ff8a3d";
+  c.fillText(s, x, y);
+  c.shadowBlur = 0;
+  c.fillStyle = "#ffd2b0";
+  c.fillText(s, x, y - 0.6);
+  c.restore();
+}
+
+/** A small paw print decal. */
+function pawPrint(p: Pen, x: number, y: number, rot: number, color: string) {
+  const c = p.ctx;
+  c.save();
+  c.translate(x, y);
+  c.rotate(rot);
+  p.ellipse(0, 2, 4.2, 3.4, { fill: color, w: 0 });
+  for (const [dx, dy] of [
+    [-4.5, -3],
+    [-1.5, -5.5],
+    [1.5, -5.5],
+    [4.5, -3],
+  ])
+    p.dot(dx, dy, 1.6, color);
   c.restore();
 }
 
@@ -185,7 +224,11 @@ export function makeCafeBg(scene: Phaser.Scene): string {
   menuPanel(p, 942, 2, 60, 60, "", "logo");
   menuPanel(p, 1012, 4, 60, 58, "FOOD", "food");
   // copper bell pendants (more hang over the counter with the decoration upgrade)
-  for (const x of [756, 852, 1094]) {
+  // neon sign on the brick: the café's own line
+  p.rrect(730, 6, 134, 50, 8, { fill: "#2f2b29", w: 2.4 });
+  neon(c, "where tech", 797, 21, 19);
+  neon(c, "builders meet.", 797, 40, 19);
+  for (const x of [1094]) {
     p.seg(x, 0, x, 18, { w: 1.2, color: "rgba(43,38,34,0.6)" });
     copperBell(p, x, 18, 0.8);
   }
@@ -211,13 +254,46 @@ export function makeCafeBg(scene: Phaser.Scene): string {
   }
   p.hatch(rect(PLAY.left, PASS_Y + PASS_H, PLAY.right - PLAY.left, PLAY.bottom - PASS_Y - PASS_H), 52, -0.35, "rgba(167,120,80,0.07)", 1.2);
 
-  // skylight above the rear seating (light patch on the floor, dark green frame)
-  c.save();
-  c.setLineDash([7, 6]);
-  p.rrect(150, 470, 170, 96, 4, { fill: "rgba(255,248,214,0.45)", w: 2, color: "#3f5b45" });
-  c.restore();
-  p.seg(235, 472, 235, 564, { w: 1.4, color: "rgba(63,91,69,0.5)" });
-  label(c, "skylight above", 235, 556, 14, "rgba(63,91,69,0.75)");
+  // laptop lounge under the skylight: orange rug, sage sofa, beanbag, the café corgi's bed
+  {
+    const L = LOUNGE;
+    p.ellipse(L.x + L.w / 2, L.y + L.h / 2 + 4, L.w / 2 + 6, L.h / 2 + 4, { fill: "rgba(255,248,214,0.35)", w: 0 }); // skylight glow
+    p.rrect(L.x, L.y, L.w, L.h, 12, { fill: "rgba(240,112,42,0.30)", w: 2.4, color: C.orangeDark });
+    p.rrect(L.x + 8, L.y + 8, L.w - 16, L.h - 16, 8, { w: 1.2, color: "rgba(201,86,26,0.45)" });
+    for (let y = L.y + 6; y < L.y + L.h - 4; y += 8) {
+      p.seg(L.x - 6, y, L.x, y, { w: 1.2, color: C.orangeDark });
+      p.seg(L.x + L.w, y, L.x + L.w + 6, y, { w: 1.2, color: C.orangeDark });
+    }
+    for (const [x, y, r] of [
+      [L.x + 120, L.y + 70, 0.3],
+      [L.x + 146, L.y + 92, -0.2],
+    ] as [number, number, number][])
+      pawPrint(p, x, y, r, "rgba(255,250,240,0.8)");
+    // sofa
+    const S = SOFA;
+    p.rrect(S.x, S.y, S.w, S.h + 10, 8, { fill: C.sage, w: 2.8 });
+    p.rrect(S.x - 6, S.y + 8, 14, S.h + 4, 5, { fill: C.sage, w: 2.6 });
+    p.rrect(S.x + S.w - 8, S.y + 8, 14, S.h + 4, 5, { fill: C.sage, w: 2.6 });
+    p.rrect(S.x + 10, S.y + S.h - 4, S.w / 2 - 12, 16, 5, { fill: "#cfe3c8", w: 2.2 });
+    p.rrect(S.x + S.w / 2 + 2, S.y + S.h - 4, S.w / 2 - 12, 16, 5, { fill: "#cfe3c8", w: 2.2 });
+    p.hatch(p.rrectPts(S.x + 4, S.y + 3, S.w - 8, 12, 5), 6, -0.8, "rgba(43,38,34,0.18)");
+    // corgi-face cushion on the sofa arm
+    p.circle(S.x + S.w - 16, S.y + 10, 8, { fill: C.orange, w: 1.8 });
+    p.shape([[S.x + S.w - 23, S.y + 6], [S.x + S.w - 22, S.y - 3], [S.x + S.w - 17, S.y + 3]], { fill: C.orange, w: 1.4 });
+    p.shape([[S.x + S.w - 9, S.y + 6], [S.x + S.w - 10, S.y - 3], [S.x + S.w - 15, S.y + 3]], { fill: C.orange, w: 1.4 });
+    p.ellipse(S.x + S.w - 16, S.y + 13, 4.5, 3, { fill: "#fffaf0", w: 0 });
+    p.dot(S.x + S.w - 16, S.y + 11, 1.4);
+    // beanbag
+    p.ellipse(L.x + L.w - 22, L.y + L.h - 30, 22, 16, { fill: C.orangeSoft, w: 2.6 });
+    p.curve([[L.x + L.w - 36, L.y + L.h - 36], [L.x + L.w - 24, L.y + L.h - 42], [L.x + L.w - 10, L.y + L.h - 36]], { w: 1.4, color: "rgba(43,38,34,0.4)" });
+    // corgi bed, water bowl and a tennis ball
+    const B = CORGI_BED;
+    p.ellipse(B.x, B.y, 30, 15, { fill: "#c99f6a", w: 2.6 });
+    p.ellipse(B.x, B.y + 1, 22, 9, { fill: "#f3e7d4", w: 1.8 });
+    p.ellipse(B.x + 44, B.y + 14, 9, 4.5, { fill: "#a9c8e8", w: 2 });
+    p.ellipse(B.x + 44, B.y + 13, 6, 2.6, { fill: "#d7e8f6", w: 0 });
+    p.circle(B.x + 60, B.y + 8, 4.2, { fill: "#d8e05a", w: 1.6 });
+  }
 
   // ------------------------------------------------------------ back bar
   p.rrect(bc.x - 4, 118, bc.w + 8, 34, 6, { fill: "#f6ead6", w: 3.2 });
@@ -300,7 +376,11 @@ export function makeCafeBg(scene: Phaser.Scene): string {
   // ------------------------------------------------------------ long side wall (bottom, cut away by the camera)
   p.rrect(PLAY.left + 4, PLAY.bottom - 16, 760, 14, 5, { fill: C.orange, w: 2.4 });
   for (let x = PLAY.left + 80; x < PLAY.left + 760; x += 90) p.seg(x, PLAY.bottom - 15, x, PLAY.bottom - 3, { w: 1, color: C.orangeDark });
-  label(c, "orange wall bench", PLAY.left + 400, PLAY.bottom - 24, 14, "rgba(43,38,34,0.45)");
+  {
+    const cols = ["#f3e7d4", C.sage, C.orangeSoft];
+    let i = 0;
+    for (let x = PLAY.left + 40; x < PLAY.left + 740; x += 64, i++) p.rrect(x, PLAY.bottom - 26, 30, 12, 5, { fill: cols[i % 3], w: 2 });
+  }
 
   // ------------------------------------------------------------ walls
   p.seg(PLAY.left, 64, PLAY.left, PLAY.bottom, { w: 4 });
@@ -323,9 +403,8 @@ export function makeCafeBg(scene: Phaser.Scene): string {
     p.seg(sx + 21, y0 + 11, sx + 21, y1 - 11, { w: 1.2 });
   }
   // fascia lettering, read vertically
-  label(c, "Corgi Cafe", sx + 50, 230, 26, "#ffffff", "Caveat Brush", Math.PI / 2);
-  label(c, "74", sx + 50, 640, 28, "#ffffff", "Caveat Brush", Math.PI / 2);
-  label(c, "where tech builders meet.", sx + 50, 380, 13, "#ffffff", "Patrick Hand", Math.PI / 2);
+  label(c, "Corgi Cafe", sx + 50, 250, 26, "#ffffff", "Caveat Brush", Math.PI / 2, C.ink);
+  label(c, "74", sx + 50, 640, 28, "#ffffff", "Caveat Brush", Math.PI / 2, C.ink);
   // little winged corgi decal on the pilaster
   p.ellipse(sx + 49, 560, 7, 5, { fill: "#ffffff", w: 1.2 });
   p.curve(
@@ -368,46 +447,55 @@ export function makeCafeBg(scene: Phaser.Scene): string {
     p.seg(x + 9, y - 6, x + 12, y + 22, { w: 2.2, color: "#55504b" });
     p.ellipse(x, y - 8, 17, 6, { fill: C.chair, w: 2.4 });
   }
-  label(c, "window bar", 1105, 596, 14, "rgba(43,38,34,0.4)");
+  // instant camera on the window bar
+  p.rrect(1060, 557, 22, 14, 3, { fill: "#fffaf0", w: 2 });
+  p.circle(1071, 564, 4.2, { fill: "#2f2a29", w: 1.4 });
+  p.dot(1078, 559.5, 1.4, C.orange);
 
-  // ------------------------------------------------------------ margin sketches: the murals, moved into the margin
-  // (camera adaptation: the Renaissance corgi wall and the Creation of Adam ceiling are not visible from this view)
+  // ------------------------------------------------------------ margin doodles (no captions)
   c.save();
-  c.globalAlpha = 0.78;
-  renaissanceCorgi(p, 44, 250, 0.62);
-  // "Creation of Adam" corgi parody: two paws reaching across a little cloud
-  p.ellipse(44, 466, 30, 16, { fill: "#cfe1ef", w: 1.4 });
-  p.curve(
-    [
-      [20, 486],
-      [30, 474],
-      [40, 470],
-    ],
-    { w: 2.4, color: C.orange },
-  );
-  p.curve(
-    [
-      [68, 448],
-      [58, 460],
-      [48, 464],
-    ],
-    { w: 2.4, color: "#d79fb3" },
-  );
-  p.dot(41, 469, 2.6, C.orange);
-  p.dot(47, 463, 2.6, "#d79fb3");
-  p.ellipse(22, 492, 12, 6, { fill: C.orange, w: 1.4 });
-  p.shape([[14, 488], [16, 480], [20, 487]], { fill: C.orange, w: 1 });
-  p.ellipse(66, 442, 11, 7, { fill: "#d79fb3", w: 1.4 });
-  p.dot(70, 446, 3, "#e6e6e6");
+  c.globalAlpha = 0.85;
+  renaissanceCorgi(p, 44, 250, 0.62); // gold-framed Renaissance corgi portrait, like the café's mural wall
+  // the corgi latte mascot: a sleepy corgi in a cup, with a little heart
+  {
+    const x = 44;
+    const y = 480;
+    p.shape([[x - 13, y - 13], [x - 8, y - 22], [x - 4, y - 14]], { fill: C.orange, w: 1.6 });
+    p.shape([[x + 13, y - 13], [x + 8, y - 22], [x + 4, y - 14]], { fill: C.orange, w: 1.6 });
+    p.ellipse(x, y - 6, 14, 11, { fill: C.orange, w: 2 });
+    p.ellipse(x, y - 1, 8, 5.5, { fill: "#fffaf0", w: 0 });
+    p.curve([[x - 8, y - 8], [x - 5, y - 6], [x - 2, y - 8]], { w: 1.6 });
+    p.curve([[x + 2, y - 8], [x + 5, y - 6], [x + 8, y - 8]], { w: 1.6 });
+    p.dot(x, y - 3, 1.8);
+    p.shape([[x - 20, y], [x + 20, y], [x + 16, y + 30], [x - 16, y + 30]], { fill: "#fffaf0", w: 2.2 });
+    p.curve([[x + 19, y + 6], [x + 30, y + 10], [x + 18, y + 22]], { w: 2.2 });
+    p.ellipse(x, y + 33, 26, 5, { fill: "#f3e7d4", w: 2 });
+    p.shape([[x + 22, y - 30], [x + 26, y - 34], [x + 30, y - 30], [x + 26, y - 24]], { fill: C.orangeSoft, w: 1.4 });
+  }
   c.restore();
-  label(c, "mural wall", 44, 316, 13, "rgba(43,38,34,0.55)");
-  label(c, "ceiling fresco", 44, 512, 13, "rgba(43,38,34,0.55)");
-  label(c, "(moved to margin)", 44, 527, 11, "rgba(43,38,34,0.45)");
-  c.save();
-  c.translate(44, 640);
-  c.rotate(-Math.PI / 2);
-  label(c, "74 Great Eastern St", 0, 0, 15, "rgba(43,38,34,0.45)");
-  c.restore();
+  // paw prints from the door into the café
+  for (let i = 0; i < 7; i++) pawPrint(p, DOOR.x - 74 - i * 22, DOOR.y + 8 + (i % 2) * 12 + i * 2, -Math.PI / 2 - 0.15, "rgba(201,86,26,0.28)");
+  // merch shelf by the door: corduroy caps, corgi mugs, totes
+  {
+    const M = MERCH;
+    p.rrect(M.x, M.y, M.w, M.h, 4, { fill: "#d9b07e", w: 2.8 });
+    for (const y of [M.y + 36, M.y + 72]) p.seg(M.x + 2, y, M.x + M.w - 2, y, { w: 2.2 });
+    for (const x of [M.x + 14, M.x + 38]) {
+      p.shape([[x - 10, M.y + 28], [x - 9, M.y + 18], [x, M.y + 13], [x + 9, M.y + 18], [x + 10, M.y + 28]], { fill: "#7a5236", w: 2 });
+      p.seg(x - 12, M.y + 29, x + 11, M.y + 29, { w: 2.4, color: "#6a4630" });
+      p.ellipse(x, M.y + 21, 3.2, 2.4, { fill: C.orange, w: 1 });
+    }
+    for (const x of [M.x + 11, M.x + 27, M.x + 43]) {
+      p.rrect(x - 6, M.y + 52, 12, 14, 2, { fill: "#fffaf0", w: 1.8 });
+      p.curve([[x + 6, M.y + 55], [x + 10, M.y + 59], [x + 6, M.y + 63]], { w: 1.6 });
+      p.dot(x, M.y + 59, 2.4, C.orange);
+    }
+    for (const x of [M.x + 15, M.x + 39]) {
+      p.curve([[x - 6, M.y + 86], [x, M.y + 78], [x + 6, M.y + 86]], { w: 1.6 });
+      p.rrect(x - 10, M.y + 86, 20, 20, 2, { fill: "#f3e7d4", w: 2 });
+      p.circle(x, M.y + 96, 4, { fill: C.orange, w: 1.2 });
+    }
+  }
   // a coffee ring, because notebooks
   p.circle(1245, 690, 22, { w: 2, color: "rgba(122,74,42,0.25)" });
   p.circle(1248, 693, 18, { w: 1.2, color: "rgba(122,74,42,0.18)" });

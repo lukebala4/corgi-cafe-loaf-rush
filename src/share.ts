@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { COLORS as C, ITEM_INFO, ItemId } from "./config";
+import { COLORS as C, DAYS, ITEM_INFO, ItemId, RECIPE_HINTS } from "./config";
 import { boil, stickerTex } from "./art/textures";
 import { scrap, txt } from "./ui";
 import { CorgiRig } from "./game/corgi";
@@ -126,6 +126,19 @@ const CSS = `
 .cc-item{display:flex;justify-content:space-between;gap:12px;font-size:19px;padding:3px 0;border-bottom:1px dashed #dccfbc}
 .cc-item small{color:#5a514a;font-size:15px}
 .cc-tag{display:inline-block;margin-left:6px;padding:0 8px;border-radius:8px;background:#7fcfb0;font-size:14px}
+.cc-order{display:flex;align-items:center;gap:12px;padding:6px 4px;border-bottom:1px dashed #dccfbc}
+.cc-order.off{opacity:.45}
+.cc-ico{width:46px;height:46px;flex:none}
+.cc-mid{flex:1;min-width:0}
+.cc-name{font-size:21px;line-height:1.1}
+.cc-how{font-size:16px;color:#5a514a}
+.cc-when{font-size:15px;color:#c9561a}
+.cc-price{text-align:right;font-size:20px;flex:none}
+.cc-price small{display:block;font-size:14px;color:#5a514a}
+.cc-full{margin:14px 0 4px;font-size:18px}
+.cc-full summary{cursor:pointer;color:#c9561a;font-size:19px}
+.cc-cat.small{font-size:18px;margin-top:8px}
+.cc-src{margin:10px 0 0!important;font-size:15px!important}
 .cc-url{width:100%;font:inherit;font-size:16px;padding:4px 6px;border:2px solid #2b2622;border-radius:6px;background:#fff}
 `;
 
@@ -289,44 +302,92 @@ export async function openShare(scene: Phaser.Scene, card: ScoreCard, onClose?: 
   );
 }
 
-/** The real London menu, for reference: all products with GBP prices; the playable subset is tagged. */
-export function openMenuInfo(scene: Phaser.Scene, onClose?: () => void) {
-  const playable = new Map<number, ItemId>();
-  (Object.keys(ITEM_INFO) as ItemId[]).forEach((k) => {
-    const id = ITEM_INFO[k].sourceId;
-    if (id) playable.set(id, k);
-  });
+/** Small data-URL icon of an item doodle (frame 0), for the DOM menu. */
+function itemIcon(scene: Phaser.Scene, k: ItemId): string {
+  const key = `item_${k}`;
+  if (!scene.textures.exists(key)) return "";
+  const src = scene.textures.get(key).getSourceImage() as HTMLCanvasElement;
+  const cv = document.createElement("canvas");
+  cv.width = 54;
+  cv.height = 54;
+  cv.getContext("2d")!.drawImage(src, 0, 0, 54, 54, 0, 0, 54, 54);
+  return cv.toDataURL("image/png");
+}
+
+const MENU_GROUPS: { title: string; items: ItemId[] }[] = [
+  { title: "Coffee", items: ["americano", "latte"] },
+  { title: "Iced coffee", items: ["icedlatte", "daytona", "pally"] },
+  { title: "Smoothies", items: ["juicebox"] },
+  { title: "Food", items: ["croissant", "cake", "sourdough"] },
+];
+
+/**
+ * "What customers can order": the nine London menu items that customers ask for in the game,
+ * with real prices, the recipe and the day each one joins the menu. Today's items are highlighted
+ * when opened from a shift. The full London menu sits below in a fold-out list.
+ */
+export function openMenuInfo(scene: Phaser.Scene, onClose?: () => void, today?: { items: ItemId[]; dayName: string }) {
+  const firstDay = (k: ItemId) => DAYS.findIndex((d) => d.menu.includes(k));
   modal(
     scene,
     (box) => {
-      box.appendChild(el("h2", "", "The real London menu"));
+      box.appendChild(el("h2", "", today ? `Today's menu: ${today.dayName}` : "What customers can order"));
       box.appendChild(
         el(
           "p",
           "",
-          `Corgi Cafe, 74 Great Eastern Street. ${LONDON_MENU.length} products from the café's own ordering menu (retrieved ${LONDON_MENU_RETRIEVED}). Prices are real pounds and can change; in the game you earn coins, not pounds. Items tagged "in the game" are the ones you can make.`,
+          today
+            ? "Customers only order the items marked TODAY. The rest join the menu later in the week."
+            : "These are real items from Corgi Cafe London's menu. Customers order them in the game, and new ones join the menu as the week goes on.",
         ),
       );
       const list = el("div", "cc-list");
+      for (const grp of MENU_GROUPS) {
+        list.appendChild(el("div", "cc-cat", grp.title));
+        for (const k of grp.items) {
+          const info = ITEM_INFO[k];
+          const on = today ? today.items.includes(k) : true;
+          const row = el("div", "cc-order" + (on ? "" : " off"));
+          const ic = itemIcon(scene, k);
+          if (ic) {
+            const img = el("img", "cc-ico");
+            img.src = ic;
+            img.alt = "";
+            row.appendChild(img);
+          }
+          const mid = el("div", "cc-mid");
+          const name = el("div", "cc-name", info.menuName ?? info.name);
+          if (today && on) name.appendChild(el("span", "cc-tag", "TODAY"));
+          mid.appendChild(name);
+          mid.appendChild(el("div", "cc-how", `How to make it: ${RECIPE_HINTS[k] ?? ""}`));
+          const d = firstDay(k);
+          if (!on && d >= 0) mid.appendChild(el("div", "cc-when", `Joins the menu on ${DAYS[d].name}`));
+          else if (!today && d > 0) mid.appendChild(el("div", "cc-when", `From ${DAYS[d].name}`));
+          row.appendChild(mid);
+          const right = el("div", "cc-price");
+          right.appendChild(el("div", "", `£${info.gbp}`));
+          right.appendChild(el("small", "", `${info.price} coins`));
+          row.appendChild(right);
+          list.appendChild(row);
+        }
+      }
+      // the full café menu, folded away
+      const det = el("details", "cc-full");
+      det.appendChild(el("summary", "", `Full Corgi Cafe London menu (${LONDON_MENU.length} items, not all in the game)`));
       let cat = "";
       for (const r of LONDON_MENU) {
         if (r.cat !== cat) {
           cat = r.cat;
-          list.appendChild(el("div", "cc-cat", cat));
+          det.appendChild(el("div", "cc-cat small", cat));
         }
         const row = el("div", "cc-item");
-        const left = el("span", "", r.name);
-        if (playable.has(r.id)) left.appendChild(el("span", "cc-tag", "in the game"));
-        if (r.desc) {
-          left.appendChild(document.createElement("br"));
-          left.appendChild(el("small", "", r.desc));
-        }
-        row.appendChild(left);
+        row.appendChild(el("span", "", r.name));
         row.appendChild(el("span", "", `£${r.gbp}`));
-        list.appendChild(row);
+        det.appendChild(row);
       }
-      const src = el("p", "", "");
-      const a = el("a", "", "Source: Corgi Cafe London ordering menu");
+      list.appendChild(det);
+      const src = el("p", "cc-src", `Prices in pounds from the café's own ordering menu, checked ${LONDON_MENU_RETRIEVED}; they can change. In the game you earn coins. `);
+      const a = el("a", "", "Source");
       a.href = LONDON_MENU_SOURCE;
       a.target = "_blank";
       a.rel = "noopener";

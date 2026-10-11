@@ -68,7 +68,7 @@ export class ResultsScene extends Phaser.Scene {
           maxStars: 3,
           caption: `${quip} Humans ordered, corgis served.`,
           file: `corgi-cafe-${def.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`,
-          shareText: `I just ran the ${def.name} shift at Corgi Café: Loaf Rush. ${st.earned} coins, best combo x${st.bestCombo}. Can you beat my loaves?`,
+          shareText: `Humbled to announce I just ran the ${def.name} shift at Corgi Café: Loaf Rush. ${st.earned} coins, best combo x${st.bestCombo}. Can you beat my loaves?`,
         },
         () => share.setEnabled(true),
       );

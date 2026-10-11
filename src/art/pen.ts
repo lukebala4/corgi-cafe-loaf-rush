@@ -104,8 +104,18 @@ export class Pen {
       c.lineWidth = w;
       // outline as an open path with overshoot so the "pen" overlaps where it started
       const ring = this.wob(pts, j);
-      const extra = ring.slice(0, Math.min(2, ring.length)).map(([x, y]) => [x + this.r(j), y + this.r(j)] as Pt);
-      this.trace([...ring, ...extra], false);
+      if (ring.length < 3) {
+        this.trace(ring, true);
+      } else {
+        // Start on the smoothed curve (midpoint of the closing edge) and finish a little past the
+        // start along the next edge, so the overlap follows the outline instead of leaving a tail.
+        const n = ring.length;
+        const mid = (a: Pt, b: Pt): Pt => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        const start = mid(ring[n - 1], ring[0]);
+        const e0: Pt = [ring[0][0] + this.r(j * 0.5), ring[0][1] + this.r(j * 0.5)];
+        const end = mid(e0, ring[1]);
+        this.trace([start, ...ring, e0, end], false);
+      }
       c.stroke();
       if (o.double) {
         c.globalAlpha = (o.alpha ?? 1) * 0.35;

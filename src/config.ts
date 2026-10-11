@@ -183,9 +183,9 @@ export const STATION_DEFS: StationDef[] = [
 export const RECIPE_HINTS: Partial<Record<ItemId, string>> = {
   americano: "cup from CUPS → ESPRESSO",
   latte: "cup from CUPS → MILK → ESPRESSO (the corgi foam art pours itself)",
-  icedlatte: "make a Latte → COLD BAR (over ice)",
-  pally: "make an Iced Latte → COLD BAR again (pistachio + vanilla foam)",
-  daytona: "cup from CUPS → COLD BAR (cold brew + coconut water)",
+  icedlatte: "make a Latte first, then COLD BAR pours it over ice (milky, white straw)",
+  pally: "make an Iced Latte, then COLD BAR again (green pistachio foam)",
+  daytona: "take an EMPTY cup from CUPS straight to COLD BAR (dark cold brew + coconut water, black sleeve)",
   juicebox: "cup from CUPS → BLENDER (berries)",
   croissant: "grab one at CROISSANTS",
   cake: "grab a slice at CAKE",
@@ -222,7 +222,7 @@ export const ROLES: Record<Role, RoleDef> = {
     patience: 1,
     tip: 1,
     lines: {
-      order: ["Wait... the baristas are CORGIS?", "First time here! Um, hi!", "Is that corgi making coffee?!"],
+      order: ["Wait... the baristas are CORGIS?", "First time here! Um, hi!", "Is that corgi making coffee?!", "Saw this place all over LinkedIn!"],
       happy: ["I'm telling everyone.", "Best first visit ever!", "It wiggled at me!"],
       wrong: ["Oh! I didn't order this one.", "Cute, but not mine!"],
       leave: ["Aw, I have to catch my train.", "Maybe next time..."],
@@ -234,10 +234,10 @@ export const ROLES: Record<Role, RoleDef> = {
     patience: 1,
     tip: 1.05,
     lines: {
-      order: ["Quick one between commits!", "Fuel for the demo, please.", "Shipping today. Need caffeine."],
-      happy: ["Merged! Thank you!", "This unblocks me.", "Deploying happiness."],
+      order: ["Quick one between commits!", "Fuel for the demo, please.", "Shipping today. Need caffeine.", "Pitch at 3. Caffeine, please!"],
+      happy: ["Merged! Thank you!", "This unblocks me.", "Deploying happiness.", "Ship it!"],
       wrong: ["That's a bug, not my order.", "Wrong build!"],
-      leave: ["Standup's starting, gotta run.", "Out of time, sorry!"],
+      leave: ["Standup's starting, gotta run.", "Out of time, sorry!", "How am I supposed to grind?!"],
       zoom: ["Hold on, filming this.", "Okay, that's a feature."],
     },
   },
@@ -258,7 +258,7 @@ export const ROLES: Record<Role, RoleDef> = {
     patience: 0.8,
     tip: 1.7,
     lines: {
-      order: ["I'm only here for the wifi.", "Dogs. Making coffee. Sure.", "Fine. Quickly, please."],
+      order: ["I'm only here for the plug sockets.", "Dogs. Making coffee. Sure.", "Fine. Quickly, please."],
       happy: ["...okay, that's adorable.", "Don't tell anyone I smiled.", "I'll be back. Ironically."],
       wrong: ["Typical.", "Knew it."],
       leave: ["Unbelievable. (see you tomorrow)", "I'm leaving. Fondly."],
@@ -282,10 +282,10 @@ export const ROLES: Record<Role, RoleDef> = {
     patience: 2.1,
     tip: 2.2,
     lines: {
-      order: ["One order for the whole team!", "Group order, please!"],
-      happy: ["Team photo with the barista!", "Best offsite ever!"],
+      order: ["One order for the whole team!", "Group order, please!", "Hackathon team order!"],
+      happy: ["Team photo with the barista!", "Best offsite ever!", "This is our Corgi corner now!"],
       wrong: ["That's not on our list!"],
-      leave: ["We have to head off, sorry!"],
+      leave: ["We have to head off, sorry!", "How are we supposed to grind?!"],
       zoom: ["Team-building!"],
     },
   },
@@ -321,12 +321,12 @@ export const DAYS: DayDef[] = [
     subtitle: "Soft opening on Great Eastern Street. Very soft. Like a loaf.",
     menu: ["americano", "croissant"],
     roles: BASE_ROLES,
-    spawn: [12, 16],
-    maxCustomers: 3,
-    patience: 60,
+    spawn: [15, 20],
+    maxCustomers: 2,
+    patience: 66,
     comboChance: 0,
     events: [],
-    goal: 70,
+    goal: 60,
     newThing: "Americanos & croissants",
   },
   {
@@ -334,12 +334,12 @@ export const DAYS: DayDef[] = [
     subtitle: "Word is getting out around Shoreditch.",
     menu: ["americano", "croissant", "latte"],
     roles: [...BASE_ROLES, "sceptic"],
-    spawn: [11, 14],
-    maxCustomers: 4,
-    patience: 54,
-    comboChance: 0.1,
+    spawn: [14, 18],
+    maxCustomers: 3,
+    patience: 62,
+    comboChance: 0.08,
     events: [{ t: 95, id: "heist" }],
-    goal: 110,
+    goal: 95,
     newThing: "Lattes + the Croissant Heist",
   },
   {
@@ -347,15 +347,15 @@ export const DAYS: DayDef[] = [
     subtitle: "The orange cake is out. So are the zoomies.",
     menu: ["americano", "croissant", "latte", "cake"],
     roles: [...BASE_ROLES, "sceptic", "enthusiast"],
-    spawn: [10, 13],
-    maxCustomers: 4,
-    patience: 50,
-    comboChance: 0.15,
+    spawn: [13, 17],
+    maxCustomers: 3,
+    patience: 58,
+    comboChance: 0.12,
     events: [
       { t: 70, id: "zoomies" },
       { t: 130, id: "heist" },
     ],
-    goal: 150,
+    goal: 125,
     newThing: "Corgi Orange Cake, coffee enthusiasts + ZOOMIES",
   },
   {
@@ -363,15 +363,15 @@ export const DAYS: DayDef[] = [
     subtitle: "Warm sourdough. A very sleepy colleague.",
     menu: ["americano", "croissant", "latte", "cake", "sourdough"],
     roles: [...BASE_ROLES, "sceptic", "enthusiast"],
-    spawn: [9, 12.5],
-    maxCustomers: 5,
-    patience: 48,
-    comboChance: 0.2,
+    spawn: [12, 16],
+    maxCustomers: 4,
+    patience: 56,
+    comboChance: 0.15,
     events: [
       { t: 55, id: "nap" },
       { t: 120, id: "zoomies" },
     ],
-    goal: 190,
+    goal: 160,
     newThing: "Chicken sourdough + NAP ATTACK",
   },
   {
@@ -379,34 +379,34 @@ export const DAYS: DayDef[] = [
     subtitle: "Cold bar open. Phones out. A whole team walks in.",
     menu: ["americano", "croissant", "latte", "cake", "sourdough", "icedlatte", "daytona"],
     roles: [...BASE_ROLES, "sceptic", "enthusiast", "creator"],
-    spawn: [8.5, 12],
-    maxCustomers: 5,
-    patience: 46,
-    comboChance: 0.25,
+    spawn: [11.5, 15],
+    maxCustomers: 4,
+    patience: 54,
+    comboChance: 0.2,
     events: [
       { t: 45, id: "group" },
       { t: 110, id: "heist" },
       { t: 150, id: "nap" },
     ],
-    goal: 240,
+    goal: 200,
     newThing: "Iced Latte, Brew Daytona, creators + a VISITING GROUP",
   },
   {
     name: "Saturday",
-    subtitle: "Weekend combos. Everyone wants two things.",
+    subtitle: "Weekend combos. Plenty of two-item orders.",
     menu: ALL_DRINKS_FOOD,
     roles: [...BASE_ROLES, "sceptic", "enthusiast", "creator"],
-    spawn: [8, 11],
-    maxCustomers: 6,
-    patience: 46,
-    comboChance: 0.4,
+    spawn: [11, 14.5],
+    maxCustomers: 5,
+    patience: 54,
+    comboChance: 0.28,
     events: [
       { t: 40, id: "zoomies" },
       { t: 85, id: "group" },
       { t: 125, id: "nap" },
       { t: 155, id: "heist" },
     ],
-    goal: 290,
+    goal: 240,
     newThing: "Pally Pick-Me-Up, The Juicebox + combos",
   },
   {
@@ -414,10 +414,10 @@ export const DAYS: DayDef[] = [
     subtitle: "The finale. All of Shoreditch is coming.",
     menu: ALL_DRINKS_FOOD,
     roles: [...BASE_ROLES, "sceptic", "enthusiast", "creator"],
-    spawn: [6.5, 9.5],
-    maxCustomers: 6,
-    patience: 46,
-    comboChance: 0.5,
+    spawn: [9.5, 13],
+    maxCustomers: 5,
+    patience: 52,
+    comboChance: 0.35,
     events: [
       { t: 25, id: "zoomies" },
       { t: 55, id: "heist" },
@@ -426,7 +426,7 @@ export const DAYS: DayDef[] = [
       { t: 138, id: "zoomies" },
       { t: 160, id: "heist" },
     ],
-    goal: 360,
+    goal: 290,
     newThing: "SUNDAY BRUNCH FINALE",
   },
 ];
@@ -443,34 +443,66 @@ export function enthusiastPick(menu: ItemId[]): ItemId {
 export type UpgradeId = "espresso" | "carry" | "dash" | "patience" | "assistant";
 
 export const UPGRADES: { id: UpgradeId; name: string; desc: string[]; costs: number[] }[] = [
-  { id: "espresso", name: "Turbo Espresso", desc: ["Espresso & blender 35% faster", "Brews in a blink"], costs: [60, 130] },
-  { id: "carry", name: "Second Paw Slot", desc: ["Carry TWO items at once"], costs: [150] },
-  { id: "dash", name: "Longer Zoomies", desc: ["Longer dash, shorter cooldown", "Maximum zoom"], costs: [50, 110] },
-  { id: "patience", name: "Comfy Cushions", desc: ["Customers wait 25% longer", "Customers wait 50% longer"], costs: [70, 150] },
-  { id: "assistant", name: "Hire Biscuit", desc: ["Biscuit the corgi delivers items left on the PASS"], costs: [200] },
+  {
+    id: "espresso",
+    name: "Turbo Espresso",
+    desc: ["Espresso & blender 30% faster", "Even faster shots", "Brews in a blink"],
+    costs: [60, 150, 240],
+  },
+  { id: "carry", name: "Second Paw Slot", desc: ["Carry TWO items at once"], costs: [180] },
+  { id: "dash", name: "Longer Zoomies", desc: ["Longer dash, shorter cooldown", "Zoom further", "Maximum zoom"], costs: [50, 120, 180] },
+  {
+    id: "patience",
+    name: "Comfy Cushions",
+    desc: ["Customers wait 20% longer", "Customers wait 40% longer", "Customers wait 60% longer"],
+    costs: [70, 160, 240],
+  },
+  {
+    id: "assistant",
+    name: "Hire Biscuit",
+    desc: ["Biscuit the corgi delivers items left on the PASS", "Biscuit gets roller skates: much faster runs"],
+    costs: [220, 300],
+  },
 ];
+/** Shop restocks through the week: upgrade level k can only be bought once save.day >= TIER_DAY[k]. */
+export const TIER_DAY = [0, 2, 4];
 
-export const BREW_TIME = [3.6, 2.4, 1.4];
-export const BLEND_TIME = [2.6, 1.8, 1.2];
-export const DASH_TIME = [0.15, 0.21, 0.27];
-export const DASH_COOLDOWN = [1.5, 1.1, 0.75];
-export const PATIENCE_MULT = [1, 1.25, 1.5];
+export const BREW_TIME = [3.6, 2.6, 1.8, 1.2];
+export const BLEND_TIME = [2.6, 2.0, 1.5, 1.1];
+export const DASH_TIME = [0.15, 0.2, 0.24, 0.28];
+export const DASH_COOLDOWN = [1.5, 1.15, 0.9, 0.7];
+export const PATIENCE_MULT = [1, 1.2, 1.4, 1.6];
+export const ASSIST_SPEED = [210, 210, 300];
 
 export type ApronId = "classic" | "mint" | "coral" | "polka" | "bowtie";
 export const APRONS: { id: ApronId; name: string; cost: number; color: string }[] = [
   { id: "classic", name: "Classic", cost: 0, color: "#ffffff" },
-  { id: "mint", name: "Sage", cost: 30, color: "#a3ae8f" },
-  { id: "coral", name: "Corgi Orange", cost: 30, color: "#f0702a" },
-  { id: "polka", name: "Polka Loaf", cost: 45, color: "#fff2c2" },
-  { id: "bowtie", name: "Fancy Bowtie", cost: 45, color: "#3b5a8a" },
+  { id: "mint", name: "Sage", cost: 40, color: "#a3ae8f" },
+  { id: "coral", name: "Corgi Orange", cost: 40, color: "#f0702a" },
+  { id: "polka", name: "Polka Loaf", cost: 70, color: "#fff2c2" },
+  { id: "bowtie", name: "Fancy Bowtie", cost: 90, color: "#3b5a8a" },
 ];
 
-export type DecorId = "plant" | "bunting" | "lights" | "portrait";
+export type DecorId = "plant" | "bunting" | "lights" | "portrait" | "power" | "events" | "stickers" | "archie";
 export const DECOR: { id: DecorId; name: string; cost: number }[] = [
   { id: "plant", name: "Orange flower pots", cost: 40 },
-  { id: "bunting", name: "Polaroid string", cost: 50 },
-  { id: "lights", name: "Extra copper lamps", cost: 60 },
-  { id: "portrait", name: "Renaissance corgi", cost: 60 },
+  { id: "bunting", name: "Polaroid string", cost: 60 },
+  { id: "power", name: "Plugs at every table", cost: 60 },
+  { id: "lights", name: "Extra copper lamps", cost: 80 },
+  { id: "events", name: "Tonight board", cost: 80 },
+  { id: "portrait", name: "Renaissance corgi", cost: 100 },
+  { id: "stickers", name: "Laptop stickers", cost: 100 },
+  { id: "archie", name: "Archie drops by", cost: 250 },
+];
+/** What's on after closing each day (shown on the Tonight board). */
+export const DAY_EVENTS = [
+  "pub club (smoothies)",
+  "pitch night",
+  "demo night",
+  "hackathon: ship by 9",
+  "app roast",
+  "corgi paint club",
+  "run club + brunch",
 ];
 export const DECOR_TIP_BONUS = 0.05;
 

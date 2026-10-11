@@ -52,6 +52,9 @@ export class TitleScene extends Phaser.Scene {
     const cx = 340;
     const cy = 470;
     const heroScale = 1.08;
+    // The cup body is drawn centred at x 150 of the 340 px cup texture (the handle fills the right side),
+    // so everything printed on the mug is centred on the body, not on the texture.
+    const mx = cx + (150 - 170) * heroScale;
     const cupBack = boil(this, cx, cy, "title_cup_back").setScale(heroScale);
     const corgi = boil(this, cx - 20, cy - 78, "title_corgi").setOrigin(0.5, 0.5).setScale(heroScale);
     const cupFront = boil(this, cx, cy, "title_cup_front").setScale(heroScale);
@@ -59,30 +62,29 @@ export class TitleScene extends Phaser.Scene {
     void cupFront;
     corgi.setDepth(0);
     cupFront.setDepth(1);
-    // Match the handwritten lettering in the reference drawing without baking text into the texture.
-    const cupName = txt(this, cx, cy + 16, "Corgi Cafe", 26, C.orangeDark, false, {
-      stroke: "#fffaf0",
-      strokeThickness: 2,
-    }).setDepth(2).setAngle(-1);
-    const cupHeart = txt(this, cx, cy + 55, "♡", 28, C.coral, true, { stroke: "#fffaf0", strokeThickness: 2 }).setDepth(2);
-    const mascotTag = txt(this, cx, cy - 168, "our signature loaf", 18, C.inkSoft, false, {
+    // the "Corgi / Cafe" lettering and heart are drawn into the cup art itself (title_cup_front)
+    const mascotTag = txt(this, mx, cy - 168, "our signature loaf", 18, C.inkSoft, false, {
       backgroundColor: "#fffaf0",
       padding: { x: 8, y: 3 },
     }).setDepth(3).setAngle(-4);
+    const restY = corgi.y;
+    let popTween: Phaser.Tweens.Tween | undefined;
     const hero = this.add.container(0, 0).setDepth(3).setSize(340, 300).setInteractive({ useHandCursor: true });
-    hero.setPosition(cx, cy);
+    hero.setPosition(mx + 12, cy);
     hero.on("pointerdown", () => {
       audio.unlock();
       audio.play("bark");
       corgi.setTexture("title_corgi", 0);
-      this.tweens.add({ targets: [corgi, cupHeart], y: "-=12", duration: 100, yoyo: true, ease: "Back.out" });
+      // always bounce from (and back to) the same resting spot, however fast it is tapped
+      popTween?.stop();
+      corgi.y = restY;
+      popTween = this.tweens.add({ targets: corgi, y: restY - 12, duration: 100, yoyo: true, ease: "Back.out" });
       const hello = txt(this, cx + 70, cy - 150, "yip!", 28, C.coral, true, { stroke: "#fffaf0", strokeThickness: 4 }).setDepth(5);
       this.tweens.add({ targets: hello, y: hello.y - 28, alpha: 0, duration: 750, onComplete: () => hello.destroy() });
     });
-    hero.on("pointerover", () => this.tweens.add({ targets: [corgi, cupHeart], scale: heroScale * 1.04, duration: 120 }));
-    hero.on("pointerout", () => this.tweens.add({ targets: [corgi, cupHeart], scale: heroScale, duration: 120 }));
+    // sleepy breathing is a scale-only loop, so it never fights the tap bounce over position
     if (!save.data.settings.reducedMotion)
-      this.tweens.add({ targets: corgi, scaleY: heroScale * 1.04, scaleX: heroScale * 0.985, y: corgi.y - 3, duration: 1600, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+      this.tweens.add({ targets: corgi, scaleY: heroScale * 1.04, scaleX: heroScale * 0.985, duration: 1600, yoyo: true, repeat: -1, ease: "Sine.inOut" });
     this.time.addEvent({
       delay: 900,
       loop: true,

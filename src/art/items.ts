@@ -217,12 +217,36 @@ export const ITEM_DRAW: Record<string, (p: Pen) => void> = {
     steam(p, [22, 31], 9);
   },
   latte: latteCup,
-  icedlatte: (p) =>
-    clearCup(p, [
-      [24, "#efe2cc"],
-      [34, "#c79a6a"],
-      [42, "#a8703f"],
-    ]),
+  icedlatte: (p) => {
+    // milky iced latte: mostly white milk with a caramel coffee swirl, white straw, no lid
+    clearCup(
+      p,
+      [
+        [16, "#fbf6ec"],
+        [36, "#d9b48a"],
+        [44, "#b98454"],
+      ],
+      true,
+      "#ffffff",
+    );
+    p.curve(
+      [
+        [19, 34],
+        [24, 29],
+        [30, 35],
+        [35, 30],
+      ],
+      { w: 2.2, color: "#b98454" },
+    );
+    p.curve(
+      [
+        [20, 40],
+        [26, 37],
+        [33, 41],
+      ],
+      { w: 1.8, color: "#fbf6ec" },
+    );
+  },
   pally: (p) => {
     clearCup(
       p,
@@ -245,18 +269,29 @@ export const ITEM_DRAW: Record<string, (p: Pen) => void> = {
       p.dot(x, y, 1.3, "#6f8d3c");
   },
   daytona: (p) => {
-    clearCup(p, [[20, "rgba(150,96,48,0.85)"]], true, null);
-    // coconut wedge on the rim
+    // Brew Daytona: dark cold brew over ice, flat lid, black sleeve with white branding
+    p.seg(30, 0, 28, 12, { w: 3.6, color: "#2b2622" });
+    clearCup(p, [[15, "rgba(92,54,26,0.92)"]], true, null);
+    p.rrect(11, 9, 32, 5, 2, { fill: "#eef4f6", w: 2.4 }); // flat lid
     p.shape(
       [
-        [34, 14],
-        [38, 6],
-        [46, 7],
-        [44, 14],
+        [16.4, 27],
+        [37.6, 27],
+        [36.3, 40],
+        [17.7, 40],
       ],
-      { fill: "#fffaf0", w: 2.2 },
-    );
-    p.seg(37, 7, 45, 8, { w: 2.4, color: "#7a4a2a" });
+      { fill: "#1f1b19", w: 2.2 },
+    ); // black sleeve
+    p.curve(
+      [
+        [20, 35],
+        [24, 30.5],
+        [27, 35],
+        [30, 30.5],
+        [34, 35],
+      ],
+      { w: 2.2, color: "#ffffff" },
+    ); // white Daytona wave
   },
   juicebox: (p) => {
     clearCup(

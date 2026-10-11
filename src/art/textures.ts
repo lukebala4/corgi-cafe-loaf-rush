@@ -128,6 +128,7 @@ export function buildTextures(scene: Phaser.Scene) {
     doodle(scene, `h_${L.id}_walkA`, HW, HH, (p) => drawHuman(p, L, "walkA", "n"));
     doodle(scene, `h_${L.id}_walkB`, HW, HH, (p) => drawHuman(p, L, "walkB", "n"));
     doodle(scene, `h_${L.id}_walkH`, HW, HH, (p) => drawHuman(p, L, "walkA", "h"));
+    if (L.prop === "phone") doodle(scene, `h_${L.id}_film`, HW, HH, (p) => drawHuman(p, L, "sit", "h", true));
   }
   doodle(scene, "chair", 70, 96, (p) => drawChair(p));
 
@@ -489,16 +490,17 @@ export function buildTextures(scene: Phaser.Scene) {
       ],
       { w: 8, color: "#fff" },
     );
+    // outline starts at the base so the pen's overshoot hides in the bottom curve, not on the side
     p.shape(
       [
-        [22, 72],
-        [32, 170],
         [70, 236],
         [150, 248],
         [230, 236],
         [268, 170],
         [278, 72],
         [150, 104],
+        [22, 72],
+        [32, 170],
       ],
       { fill: "#fffaf0", w: 4 },
     );
@@ -512,8 +514,8 @@ export function buildTextures(scene: Phaser.Scene) {
     );
     p.hatch(
       [
-        [40, 190],
-        [260, 190],
+        [52, 226],
+        [248, 226],
         [230, 236],
         [150, 248],
         [70, 236],
@@ -523,6 +525,11 @@ export function buildTextures(scene: Phaser.Scene) {
       "rgba(43,38,34,0.18)",
     );
     p.ellipse(150, 254, 150, 6, { fill: "rgba(43,38,34,0.12)", w: 0 });
+    // hand lettering on the mug, like the pencil "corgi latte" in the original sketch:
+    // two short lines that follow the curve of the cup, and a little inked heart underneath
+    mugLettering(p, "Corgi", 150, 146, 46, 9);
+    mugLettering(p, "Cafe", 150, 186, 46, 8);
+    inkHeart(p, 150, 211, 0.78);
   });
   // title cue: the orange moulded double-bay shopfront (fascia lettering is added as text by the title scene)
   doodle(scene, "title_storefront", 200, 150, (p) => {
@@ -567,6 +574,57 @@ export function buildTextures(scene: Phaser.Scene) {
     p.seg(16, 28, 22, 22, { w: 1.6, color: "rgba(255,255,255,0.7)" });
     p.ellipse(28, 42, 9, 4, { fill: "#fff2c2", w: 1.8 });
     for (const [x, y] of [[16, 50], [28, 53], [40, 50]] as [number, number][]) p.seg(x, y, x + (x - 28) * 0.15, y + 3, { w: 1.4, color: C.caramel });
+  });
+  // London tech decor (shop): power strips, the Tonight board, laptop stickers, Archie's cushion
+  doodle(scene, "icon_power", 64, 44, (p) => {
+    powerStrip(p, 8, 8, 48);
+    p.curve([[10, 14], [4, 26], [14, 36], [30, 38]], { w: 2.2 });
+    p.rrect(28, 33, 10, 8, 2, { fill: "#fbf8f2", w: 1.8 });
+  });
+  doodle(scene, "deco_power", 48, 48, (p) => {
+    powerStrip(p, 4, 4, 38);
+    p.curve([[8, 10], [3, 22], [9, 34], [4, 46]], { w: 2 });
+    p.curve([[20, 6], [24, 1], [30, 2]], { w: 1.6, color: "#5a514a" });
+  });
+  doodle(scene, "deco_chalk", 116, 94, (p) => chalkBoard(p, 116, 94));
+  doodle(scene, "icon_chalk", 64, 54, (p) => {
+    chalkBoard(p, 64, 54);
+    for (const [y, w] of [[18, 30], [28, 40], [38, 24]] as [number, number][]) p.seg(14, y, 14 + w, y + p.r(1), { w: 2, color: "rgba(244,241,234,0.85)" });
+  });
+  STICKERS.forEach(([word, fill, ink], i) => {
+    const w = Math.ceil(measure(word, 14)) + 16;
+    doodle(scene, `sticker_${i}`, w, 24, (p) => {
+      p.rrect(2, 2, w - 4, 20, 8, { fill, w: 1.8 });
+      const c = p.ctx;
+      c.save();
+      c.font = `14px "Patrick Hand", cursive`;
+      c.fillStyle = ink;
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.fillText(word, w / 2 + p.r(0.4), 12.5 + p.r(0.4));
+      c.restore();
+    });
+  });
+  doodle(scene, "icon_stickers", 64, 54, (p) => {
+    p.rrect(6, 10, 34, 16, 6, { fill: C.orange, w: 1.8 });
+    p.rrect(22, 26, 36, 16, 6, { fill: "#fffaf0", w: 1.8 });
+    p.rrect(10, 34, 22, 14, 6, { fill: "#a3ae8f", w: 1.8 });
+    p.circle(48, 14, 8, { fill: "#a9c8e8", w: 1.8 });
+    p.dot(45, 13, 1.3);
+    p.dot(51, 13, 1.3);
+  });
+  doodle(scene, "archie_cushion", 96, 40, (p) => {
+    p.ellipse(48, 22, 42, 14, { fill: C.orange, w: 2.6 });
+    p.ellipse(48, 20, 32, 9, { fill: "#f6a35e", w: 1.4 });
+  });
+  doodle(scene, "icon_archie", 64, 54, (p) => {
+    p.ellipse(32, 40, 28, 9, { fill: C.orange, w: 2.2 });
+    const c = p.ctx;
+    c.save();
+    c.translate(2, 6);
+    c.scale(0.43, 0.43);
+    napCorgi(p, "red");
+    c.restore();
   });
   doodle(scene, "steam", 40, 80, (p) => {
     p.curve(
@@ -886,4 +944,82 @@ export function bubbleTex(scene: Phaser.Scene, n: number): string {
     );
   });
   return key;
+}
+
+/**
+ * Letters written around a cup: the baseline sags towards the middle (the front of the cup is
+ * nearer to us) and each letter leans with the curve. Centred on cx; baseY is the centre baseline.
+ */
+function mugLettering(p: Pen, text: string, cx: number, baseY: number, size: number, sag: number) {
+  const c = p.ctx;
+  c.save();
+  c.font = `${size}px "Caveat Brush", "Patrick Hand", cursive`;
+  c.fillStyle = "#2b2622";
+  c.textBaseline = "alphabetic";
+  const widths = [...text].map((ch) => c.measureText(ch).width * 0.96);
+  const total = widths.reduce((a, b) => a + b, 0);
+  const half = 120; // half the width of the cup face at lettering height
+  let x = cx - total / 2;
+  [...text].forEach((ch, i) => {
+    const mid = x + widths[i] / 2;
+    const u = (mid - cx) / half;
+    const y = baseY - sag * u * u; // lowest in the middle
+    const ang = Math.atan((-2 * sag * u) / half) + p.r(0.025);
+    c.save();
+    c.translate(mid + p.r(0.5), y + p.r(0.5));
+    c.rotate(ang);
+    c.fillText(ch, -widths[i] / 2, 0);
+    c.restore();
+    x += widths[i];
+  });
+  c.restore();
+}
+
+/** A small pen-drawn heart: coral fill, wobbly ink outline. */
+function inkHeart(p: Pen, cx: number, cy: number, k: number) {
+  const pts: Pt[] = [];
+  for (let i = 0; i < 28; i++) {
+    const t = (i / 28) * Math.PI * 2;
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+    pts.push([cx + x * k, cy + y * k]);
+  }
+  p.shape(pts, { fill: C.coral, w: 2.6, j: 0.5 });
+}
+
+/** Laptop sticker words (London tech scene, affectionate). [text, fill, ink] */
+export const STICKERS: [string, string, string][] = [
+  ["ship it", "#f0702a", "#fffaf0"],
+  ["build in public", "#fffaf0", "#2b2622"],
+  ["Londonmaxxing", "#a3ae8f", "#2b2622"],
+  ["corgi > standup", "#a9c8e8", "#2b2622"],
+  ["it works on my laptop", "#f6c453", "#2b2622"],
+];
+let measureCtx: CanvasRenderingContext2D | null = null;
+function measure(text: string, size: number) {
+  measureCtx ??= document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return text.length * size * 0.5;
+  measureCtx.font = `${size}px "Patrick Hand", cursive`;
+  return measureCtx.measureText(text).width;
+}
+/** A white extension strip with three sockets and a little orange power light. */
+function powerStrip(p: Pen, x: number, y: number, w: number) {
+  p.rrect(x, y, w, 12, 4, { fill: "#fbf8f2", w: 2.2 });
+  for (let k = 0; k < 3; k++) {
+    const sx = x + 9 + k * ((w - 18) / 2.4);
+    p.dot(sx - 1.6, y + 6, 1.1);
+    p.dot(sx + 1.6, y + 6, 1.1);
+  }
+  p.dot(x + w - 5, y + 6, 1.8, C.orange);
+}
+/** Wood-framed chalkboard; lettering is added on top by the game scene. */
+function chalkBoard(p: Pen, w: number, h: number) {
+  p.rrect(2, 2, w - 4, h - 4, 4, { fill: "#9a6a3e", w: 2.6 });
+  p.rrect(7, 7, w - 14, h - 16, 2, { fill: "#2f3a33", w: 1.6 });
+  p.seg(10, h - 8, w - 10, h - 8, { w: 2.4, color: "#7a4a22" });
+  p.seg(w - 26, h - 10, w - 16, h - 10, { w: 2.6, color: "#f4f1ea" });
+  for (let i = 0; i < 4; i++) {
+    const x = 14 + p.r(1) * 0 + i * ((w - 30) / 3);
+    p.seg(x, 12 + (i % 2) * 5, x + 8, 14 + (i % 2) * 5, { w: 1, color: "rgba(244,241,234,0.18)" });
+  }
 }

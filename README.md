@@ -6,15 +6,15 @@ A hand-drawn notebook café game set in the orange Corgi Cafe at 74 Great Easter
 
 ## How to play
 
-Seven shifts, Monday to Sunday Brunch, about three minutes each. Read the order bubbles above each customer, make the item at the right station and hand it over before their patience runs out. Coins buy upgrades and café décor between days.
+Seven shifts, Monday to Sunday Brunch, about three minutes each. Read the order bubbles above each customer, make the item at the right station and hand it over before their patience runs out. Coins buy upgrades and café décor between days. The shop restocks after Tuesday and Thursday with stronger upgrade levels, and late décor includes plugs at every table, a Tonight board, laptop stickers and a visit from Archie, the café's office corgi.
 
 | Item | How to make it |
 | --- | --- |
 | Americano | cup stack, then espresso |
 | Latte | cup stack, milk, then espresso |
-| Iced Latte | make a Latte, then cold bar |
+| Iced Latte (milky, white straw) | make a Latte, then cold bar |
 | Pally Pick-Me-Up | make an Iced Latte, then cold bar again |
-| Brew Daytona | cup stack, then cold bar |
+| Brew Daytona (dark, black sleeve) | empty cup from the cup stack, then cold bar |
 | The Juicebox | cup stack, then blender |
 | Plain Croissant | left side of the pastry case |
 | Corgi Orange Cake | right side of the pastry case |

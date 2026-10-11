@@ -34,7 +34,7 @@ The real room, seen from the street door, has the long counter on the **right**,
 
 **Inferred values (not measured):** room proportions, counter length, seat count, and all colours. Palette tokens used in `src/config.ts`: brand orange `#FF5C00` (digital token, not a paint code), wall `#F3EEE5`, tables `#CFA574`, floor `#A77850`, upholstery `#805B43`, sage `#96A486`, copper `#B7804B`.
 
-**Event-only and historical material kept out of the permanent café:** the launch film's "Grand Opening" starburst, ribbon cutting, crowd and the live dog are not drawn into the room. Archie (the launch dog) is not depicted; all staff corgis are fictional.
+**Event-only and historical material kept out of the permanent café:** the launch film's "Grand Opening" starburst, ribbon cutting, crowd and the live dog are not drawn into the room. All staff corgis are fictional. Archie, the café's real office corgi (publicly reported at the launch and in Metro's August report as "Archibald Clifton, Archie for short"), appears only as an optional late décor unlock ("Archie drops by"): a stylised tan-and-white corgi with a name tag who naps on a cushion and visits seated guests. It is an affectionate nod drawn from his broad public description (tan/white markings, big ears, short paws), not a literal portrait.
 
 **No photographs, video frames or raw mural pixels are shipped.** All game art is procedural pen drawing in `src/art/`. `public/` contains only `og-image.png` (rendered from the game's own scorecard art) and `manus-routes.json`.
 
@@ -63,7 +63,7 @@ Source: current official London menu, Town menu page `https://corgicafe.town.clu
 | --- | --- | --- | --- | --- | --- | --- |
 | Americano | 16037 | Coffee | 3.70 | 5 | cup, espresso | Corgi Cafe paper cup (cup logo seen in launch film) |
 | Latte | 16013 | Coffee | 4.30 | 8 | cup, milk, espresso | Paper cup; corgi latte art is game decoration only |
-| Iced Latte | 16021 | Iced Coffee | 4.30 | 9 | Latte, cold bar (ice) | Clear cup, milky coffee, ice (inference) |
+| Iced Latte | 16021 | Iced Coffee | 4.30 | 9 | Latte, cold bar (ice) | Clear cup, mostly white milk with a caramel coffee swirl, ice, white straw, no lid (inference). Drawn to read clearly apart from the Brew Daytona |
 | Brew Daytona | 16032 | Iced Coffee | 5.00 | 8 | cup, cold bar (no milk, no espresso) | Official cutout: clear cup, dark amber cold brew with ice, black sleeve |
 | Pally Pick-Me-Up | 16122 | Iced Coffee | 5.75 | 12 | Iced Latte, cold bar (pistachio and cream foam) | Official cutout: tan coffee over pistachio green, white foam cap, mint sleeve. Menu text "Pistachio syrup, Vanilla, Double cream" |
 | The Juicebox | 16031 | Smoothies | 9.75 | 10 | cup, blender | Official cutout: lavender-purple berry smoothie, domed lid, purple sleeve. Menu text "Berries" |
@@ -105,8 +105,17 @@ Orders only use items unlocked that day, and stations for locked items show a "c
 | (new) Crowd | 12 non-paying young visitors: laptop coders, phone filmers, chatters. They sit behind the long tables, on the sofa and beanbag, and at the window bar (which they give up when a group is due). 5 on Monday rising to 11 on Sunday |
 | (new) Pudding | Red-and-white lounge corgi. Naps in the lounge bed, then trots over to a seated visitor for pats (hearts) |
 | (new) Bean | Tricolour staff corgi sitting by the door, wiggles and shows a heart for every arrival |
+| (new, décor unlock) Archie | Tan-and-white office corgi with a name tag, cushion beside the lounge; naps and visits guests ("ARCHIE!!") |
 
 Humans are original fictional people with varied skin tones, hair and clothes, skewing younger (curtain fringes, space buns, braids, oversized tees, puffers, varsity jackets, AirPods, white trainers), drawn in sitting and walking poses with neutral, happy and annoyed moods. No visitor portraits or personal data were used.
+
+## 5b. Shop economy and London tech references
+
+* Order pacing was calmed after play feedback ("slightly too many orders"): new customers arrive every 15 to 20 s on Monday, easing down to 9.5 to 13 s on Sunday; at most 2 waiting on Monday up to 5 at the weekend; patience 66 s on Monday down to 52 s on Sunday; daily goals 60, 95, 125, 160, 200, 240, 290 coins; group orders are always 3 items.
+* The shop restocks through the week so it never runs dry by Friday. Each upgrade has up to three levels; level 2 arrives after Tuesday and level 3 after Thursday (`TIER_DAY = [0, 2, 4]`). Locked levels show "Restocks after Tue/Thu", and newly arrived stock gets a "new stock!" tag.
+* Prices: Turbo Espresso 60/150/240, Second Paw Slot 180, Longer Zoomies 50/120/180, Comfy Cushions 70/160/240, Hire Biscuit 220 then roller skates 300 (faster runs). Aprons 40 to 90.
+* Eight décor items over two pages (+5% tips each): flower pots 40, Polaroid string 60, plugs at every table 60, extra copper lamps 80, Tonight board 80, Renaissance corgi 100, laptop stickers 100, Archie drops by 250. Everything together costs 2,980 coins against daily goals that add up to 1,170, so even a strong week leaves plenty to save for (estimate; real earnings depend on tips and combos).
+* London tech culture, kept affectionate and impersonal (sources: City AM "Corgi Cafe: my day at London's 24/7 hub for tech bros", UK 2.0 "Tech's café culture moment", public LinkedIn and X posts, October 2026): the Tonight board lists a nightly event (pub club, pitch night, demo night, hackathon, app roast, corgi paint club, run club); pass stickers read "ship it", "build in public", "Londonmaxxing", "corgi > standup", "it works on my laptop"; visitors mutter lines such as "any London founders here?", "we just closed our pre-seed!", "one flat white, three hours", "let's make a Corgi corner", "made it off the Luma waitlist"; customers who leave can sigh "How are we supposed to grind?!". The Results share text opens with "Humbled to announce". No real person other than the café's public office corgi is referenced.
 
 ## 6. Sharing and replay loop
 

@@ -1,7 +1,8 @@
 import Phaser from "phaser";
-import { COLORS as C, DOOR, DOOR_INSIDE, DOORWAYS, EventId, ItemId, PASS_H, PASS_Y, STATION_DEFS } from "../config";
+import { ASSIST_SPEED, COLORS as C, DOOR, DOOR_INSIDE, DOORWAYS, EventId, ItemId, PASS_H, PASS_Y, STATION_DEFS } from "../config";
 import { boil } from "../art/textures";
 import { CorgiRig } from "./corgi";
+import { save } from "../save";
 import { burst, puff, txt } from "../ui";
 import { audio } from "../audio";
 import type { GameScene } from "../scenes/GameScene";
@@ -43,7 +44,7 @@ export class Assistant {
   target?: Customer;
   carry?: Phaser.GameObjects.Sprite;
   home: P;
-  speed = 210;
+  speed = ASSIST_SPEED[Math.min(save.data.upgrades.assistant, ASSIST_SPEED.length - 1)];
   thinkT = 0;
 
   constructor(g: GameScene, home: P) {

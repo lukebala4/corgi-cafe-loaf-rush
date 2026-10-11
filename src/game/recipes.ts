@@ -46,9 +46,9 @@ const CHAINS: Partial<Record<ItemId, [string, ItemId][]>> = {
 export const RECIPE_PATH: Partial<Record<ItemId, string>> = {
   americano: "CUPS → ESPRESSO",
   latte: "CUPS → MILK → ESPRESSO",
-  icedlatte: "make a Latte → COLD BAR",
-  pally: "make an Iced Latte → COLD BAR",
-  daytona: "CUPS → COLD BAR",
+  icedlatte: "Latte (CUPS → MILK → ESPRESSO) → COLD BAR",
+  pally: "Iced Latte → COLD BAR again",
+  daytona: "EMPTY cup → COLD BAR (black sleeve)",
   juicebox: "CUPS → BLENDER",
   croissant: "grab one at CROISSANTS",
   cake: "grab a slice at CAKE",

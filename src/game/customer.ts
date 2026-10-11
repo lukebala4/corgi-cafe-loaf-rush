@@ -140,7 +140,8 @@ export class Customer {
     const sit = this.seated();
     const step = Math.floor(this.walkT * 1.6) % 2 === 0 ? "walkA" : "walkB";
     for (const m of this.members) {
-      const key = sit ? `h_${m.look}_sit_${this.mood}` : this.state === "leave" && this.mood === "h" ? `h_${m.look}_walkH` : `h_${m.look}_${step}`;
+      const filming = this.state === "photo" && this.g.textures.exists(`h_${m.look}_film`);
+      const key = filming ? `h_${m.look}_film` : sit ? `h_${m.look}_sit_${this.mood}` : this.state === "leave" && this.mood === "h" ? `h_${m.look}_walkH` : `h_${m.look}_${step}`;
       setBoil(m.sprite, key);
     }
   }

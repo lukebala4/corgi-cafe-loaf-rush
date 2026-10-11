@@ -34,20 +34,38 @@ const CODE_LINES = [
   "pushing to prod",
   "AI wrote this bit",
   "hackathon brain",
+  "building in public, day 37",
+  "checking on my agents",
+  "one more prompt",
+  "deck v14, final final",
+  "pitch night later?",
+  "great wifi + plugs here",
 ];
 const CHAT_LINES = [
   "look at that loaf!",
-  "best latte in E2",
+  "best latte in EC2",
   "corgi tax paid",
   "this place is so cute",
   "same time tomorrow?",
   "SO fluffy",
   "a corgi made my coffee",
   "ok one more pastry",
+  "any London founders here?",
+  "pub club after?",
+  "we just closed our pre-seed!",
+  "one flat white, three hours",
+  "Shoreditch is back",
+  "Londonmaxxing",
+  "let's make a Corgi corner",
+  "made it off the Luma waitlist",
+  "Silicon Roundabout, baby",
 ];
 const PHOTO_LINES = ["going on my story", "pose, corgi!", "so aesthetic", "content!!"];
 const ZOOM_LINES = ["ZOOMIES!", "go go go!", "zoom zoom!", "look at them go!"];
 const PAT_LINES = ["hi baby!", "can I pet you?", "who's a good loaf?", "ahh a corgi!"];
+const ARCHIE_LINES = ["ARCHIE!!", "the office corgi!", "Archie came to say hi", "best colleague ever", "Archie > standup"];
+/** Archie's cushion on the floor beside the lounge (decor upgrade). */
+const ARCHIE_HOME = { x: 380, y: 640 };
 
 /** Laptop lid seen from behind (stickers on the back). */
 function makeTextures(g: Phaser.Scene) {
@@ -118,6 +136,8 @@ export class Crowd {
   spawnT = 2;
   bubbleCount = 0;
   pudding: Pudding;
+  /** Archie, the office corgi (shop decor), visits too. */
+  archie?: Pudding;
   greeter: CorgiRig;
   greeted = new WeakSet<object>();
   greetCd = 0;
@@ -127,6 +147,10 @@ export class Crowd {
     makeTextures(g);
     this.buildSpots();
     this.pudding = new Pudding(g, this);
+    if (save.data.decor.includes("archie") && !g.tutorialMode) {
+      boil(g, ARCHIE_HOME.x, ARCHIE_HOME.y + 8, "archie_cushion").setDepth(ARCHIE_HOME.y - 4);
+      this.archie = new Pudding(g, this, { name: "Archie", home: ARCHIE_HOME, coat: "red", lines: ARCHIE_LINES, tag: true });
+    }
     // Bean, a tricolour staff corgi, sits by the door and greets everyone who walks in
     this.greeter = new CorgiRig(g, DOOR_INSIDE.x - 64, DOOR_INSIDE.y - 34, 0.6, "classic", "tri");
     this.greeter.facing = 1;
@@ -319,7 +343,9 @@ export class Crowd {
       p.chatT -= dt;
       if (zooming && p.happyT < 0.5 && Math.random() < dt * 0.6) this.cheer(p, 2.2, Math.random() < 0.3 ? ZOOM_LINES[Math.floor(Math.random() * ZOOM_LINES.length)] : undefined);
       const mood = p.happyT > 0 || zooming ? "h" : "n";
-      setBoil(p.sprite, `h_${p.look}_sit_${mood}`);
+      // phone people lift their phones to film the zoomies, then go back to scrolling
+      const film = zooming && this.g.textures.exists(`h_${p.look}_film`);
+      setBoil(p.sprite, film ? `h_${p.look}_film` : `h_${p.look}_sit_${mood}`);
       // gentle typing / fidget bob
       if (!reduce) {
         const t = this.g.time.now / 1000;
@@ -331,11 +357,12 @@ export class Crowd {
         this.say(p, p.lines[Math.floor(Math.random() * p.lines.length)]);
         if (p.lines === CODE_LINES || Math.random() < 0.3) p.happyT = 1.4;
       }
-      if (p.stay <= 0 && !this.pudding.visiting(p)) this.stand(p);
+      if (p.stay <= 0 && !this.pudding.visiting(p) && !this.archie?.visiting(p)) this.stand(p);
     }
     for (const p of this.people.filter((q) => q.state === "gone")) p.sprite.destroy();
     this.people = this.people.filter((q) => q.state !== "gone");
     this.pudding.update(dt);
+    this.archie?.update(dt);
     this.updateGreeter(dt);
   }
   private updateGreeter(dt: number) {
@@ -367,6 +394,7 @@ export class Crowd {
     }
     this.people = [];
     this.pudding.destroy();
+    this.archie?.destroy();
     this.greeter.destroy();
   }
 }
@@ -379,19 +407,49 @@ class Pudding {
   nap: Phaser.GameObjects.Sprite;
   zzz: Phaser.GameObjects.Text;
   state: "nap" | "walk" | "visit" | "back" = "nap";
-  x = CORGI_BED.x;
-  y = CORGI_BED.y + 6;
+  home: { x: number; y: number };
+  name: string;
+  lines: string[];
+  tag?: Phaser.GameObjects.Text;
+  x: number;
+  y: number;
   path: P[] = [];
   t = Phaser.Math.FloatBetween(8, 16);
   target?: Person;
-  constructor(g: GameScene, crowd: Crowd) {
+  constructor(
+    g: GameScene,
+    crowd: Crowd,
+    opts: { name: string; home: { x: number; y: number }; coat: "red" | "tri"; lines: string[]; tag?: boolean } = {
+      name: "Pudding",
+      home: CORGI_BED,
+      coat: "red",
+      lines: PAT_LINES,
+    },
+  ) {
     this.g = g;
     this.crowd = crowd;
-    this.nap = boil(g, CORGI_BED.x, CORGI_BED.y + 12, "napcorgi_red").setOrigin(0.5, 1).setScale(0.5).setDepth(CORGI_BED.y + 12);
+    this.home = opts.home;
+    this.name = opts.name;
+    this.lines = opts.lines;
+    this.x = opts.home.x;
+    this.y = opts.home.y + 6;
+    this.nap = boil(g, this.home.x, this.home.y + 12, `napcorgi_${opts.coat}`).setOrigin(0.5, 1).setScale(0.5).setDepth(this.home.y + 12);
     this.zzz = g.add
-      .text(CORGI_BED.x + 22, CORGI_BED.y - 26, "z z", { fontFamily: `"${FONT_BODY}", cursive`, fontSize: "16px", color: C.inkSoft })
-      .setDepth(CORGI_BED.y + 13);
-    this.rig = new CorgiRig(g, this.x, this.y, 0.56, "classic", "red");
+      .text(this.home.x + 22, this.home.y - 26, "z z", { fontFamily: `"${FONT_BODY}", cursive`, fontSize: "16px", color: C.inkSoft })
+      .setDepth(this.home.y + 13);
+    this.rig = new CorgiRig(g, this.x, this.y, 0.56, "classic", opts.coat);
+    if (opts.tag) {
+      this.tag = g.add
+        .text(opts.home.x, opts.home.y - 40, opts.name, {
+          fontFamily: `"${FONT_BODY}", cursive`,
+          fontSize: "15px",
+          color: C.ink,
+          backgroundColor: "#fffaf0",
+          padding: { x: 4, y: 1 },
+        })
+        .setOrigin(0.5)
+        .setDepth(3940);
+    }
     this.rig.setVisible(false);
   }
   visiting(p: Person) {
@@ -405,8 +463,9 @@ class Pudding {
   update(dt: number) {
     const t = this.g.time.now / 1000;
     if (this.state === "nap") {
+      this.tag?.setPosition(this.home.x, this.home.y - 34);
       this.zzz.setAlpha(0.5 + Math.sin(t * 2) * 0.3);
-      this.zzz.y = CORGI_BED.y - 26 + Math.sin(t * 1.3) * 2;
+      this.zzz.y = this.home.y - 26 + Math.sin(t * 1.3) * 2;
       this.t -= dt;
       // zoomies wake Pudding too
       if (this.t <= 0 || (this.g.director.zooming && Math.random() < dt * 0.4)) {
@@ -418,8 +477,8 @@ class Pudding {
         this.target = choices[Math.floor(Math.random() * choices.length)];
         const a = this.target.spot.approach;
         const goal = { x: a.x + 28, y: a.y + (this.target.spot.kind === "table" ? 0 : 4) };
-        this.x = CORGI_BED.x + 34;
-        this.y = CORGI_BED.y + 10;
+        this.x = this.home.x + 34;
+        this.y = this.home.y + 10;
         this.path = [...this.g.nav.path({ x: this.x, y: this.y }, goal), goal];
         this.state = "walk";
         this.setNapping(false);
@@ -442,7 +501,7 @@ class Pudding {
           this.t = 4.5;
           this.rig.facing = -1;
           this.rig.celebrate(1.2);
-          if (this.target) this.crowd.cheer(this.target, 4.5, PAT_LINES[Math.floor(Math.random() * PAT_LINES.length)]);
+          if (this.target) this.crowd.cheer(this.target, 4.5, this.lines[Math.floor(Math.random() * this.lines.length)]);
           this.heart();
         } else {
           this.state = "nap";
@@ -457,6 +516,7 @@ class Pudding {
     }
     this.rig.setPosition(this.x, this.y);
     this.rig.animate(dt, vx, vy, 150);
+    this.tag?.setPosition(this.x, this.y - 52);
   }
   private heart() {
     const g = this.g;
@@ -469,10 +529,11 @@ class Pudding {
   private goBack() {
     this.state = "back";
     this.target = undefined;
-    const goal = { x: CORGI_BED.x + 34, y: CORGI_BED.y + 10 };
+    const goal = { x: this.home.x + 34, y: this.home.y + 10 };
     this.path = [...this.g.nav.path({ x: this.x, y: this.y }, goal), goal];
   }
   destroy() {
+    this.tag?.destroy();
     this.rig.destroy();
     this.nap.destroy();
     this.zzz.destroy();

@@ -5,6 +5,7 @@ import {
   DASH_COOLDOWN,
   DASH_TIME,
   DAYS,
+  DAY_EVENTS,
   DAY_LENGTH,
   DECOR_TIP_BONUS,
   DayDef,
@@ -169,6 +170,40 @@ export class GameScene extends Phaser.Scene {
       boil(this, 128, 700, "deco_plant").setOrigin(0.5, 1).setScale(0.55).setDepth(700).setFlipX(true);
     }
     if (d.includes("portrait")) boil(this, 930, 664, "deco_portrait").setScale(0.5).setDepth(2);
+    // power strips and cables on every communal table (builders plug in and stay)
+    if (d.includes("power"))
+      TABLES.forEach((t, i) =>
+        boil(this, t.x + t.w * (i % 2 ? -0.3 : 0.3), t.y - 14, "deco_power")
+          .setOrigin(0.5, 0.15)
+          .setDepth(t.y + 21),
+      );
+    // Tonight board on the back wall: tonight's after-hours event and tomorrow's
+    if (d.includes("events")) {
+      const bx = 164;
+      const by = 102;
+      boil(this, bx, by, "deco_chalk").setDepth(3).setAngle(-1.5);
+      const chalk = "#f4f1ea";
+      const di = Math.max(0, Math.min(this.dayIdx, DAY_EVENTS.length - 1));
+      txt(this, bx, by - 30, "TONIGHT", 19, chalk, true).setDepth(4).setAngle(-1.5);
+      txt(this, bx, by - 6, DAY_EVENTS[di], 16, chalk, false, { wordWrap: { width: 92 }, align: "center" })
+        .setDepth(4)
+        .setAngle(-1.5)
+        .setLineSpacing(-4);
+      const short = ["pub club", "pitch night", "demo night", "hackathon", "app roast", "paint club", "run club"];
+      const tmrw = di + 1 < short.length ? `tmrw: ${short[di + 1]}` : "back Monday!";
+      txt(this, bx, by + 26, tmrw, 13, "#f6c453", false).setDepth(4).setAngle(-1.5);
+    }
+    // laptop stickers along the pass, between the serving pads
+    if (d.includes("stickers"))
+      (
+        [
+          [4, 315, -4],
+          [0, 548, 5],
+          [2, 745, -3],
+          [3, 938, 4],
+          [1, 1142, -5],
+        ] as [number, number, number][]
+      ).forEach(([k, x, ang]) => boil(this, x, PASS_Y + 11, `sticker_${k}`).setScale(0.85).setAngle(ang).setDepth(PASS_Y + 12));
 
     // stations
     for (const sd of STATION_DEFS) {
@@ -752,7 +787,8 @@ export class GameScene extends Phaser.Scene {
 
   private makeOrder(role: Role): ItemId[] {
     if (role === "group") {
-      const n = this.dayIdx >= 5 ? 4 : 3;
+      // a group shares one order of three: generous coins without burying the bar
+      const n = 3;
       const out: ItemId[] = [];
       for (let i = 0; i < n; i++) out.push(this.pickOrderItem(out.length < this.def.menu.length - 1 ? out : []));
       return out;
@@ -760,7 +796,7 @@ export class GameScene extends Phaser.Scene {
     const first: ItemId = role === "enthusiast" ? enthusiastPick(this.def.menu) : this.pickOrderItem();
     const order: ItemId[] = [first];
     if (Math.random() < this.def.comboChance) order.push(this.pickOrderItem([first]));
-    if (this.dayIdx >= 5 && role !== "enthusiast" && Math.random() < 0.12) order.push(this.pickOrderItem(order));
+    if (this.dayIdx >= 5 && role !== "enthusiast" && Math.random() < 0.05) order.push(this.pickOrderItem(order));
     return order;
   }
 

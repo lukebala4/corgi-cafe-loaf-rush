@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { APRONS, COLORS as C, DAYS, DECOR, UPGRADES } from "../config";
+import { APRONS, COLORS as C, DAYS, DECOR, TIER_DAY, UPGRADES } from "../config";
 import { boil } from "../art/textures";
 import { CorgiRig } from "../game/corgi";
 import { burst, button, floatText, scrap, txt } from "../ui";
@@ -8,15 +8,18 @@ import { save } from "../save";
 
 export class ShopScene extends Phaser.Scene {
   private coinsT!: Phaser.GameObjects.Text;
+  /** Decor panel page (kept across the restart after a purchase). */
+  private decorPage = 0;
   constructor() {
     super("Shop");
   }
 
-  create() {
+  create(data: { decorPage?: number } = {}) {
     this.add.image(0, 0, "bg_paper").setOrigin(0);
     audio.music("title");
     const d = save.data;
     txt(this, 330, 52, "The Loaf Shop", 58, C.caramel, true, { stroke: C.ink, strokeThickness: 3 }).setAngle(-2);
+    txt(this, 330, 101, "Fresh stock arrives after Tuesday and Thursday", 19, C.inkSoft).setAngle(-1);
     const cs = scrap(this, 1060, 52, 240, 50, 2, false);
     cs.add(this.add.image(-80, 0, "coin", 0));
     this.coinsT = txt(this, 14, 0, `${d.coins} coins`, 30, C.ink, true);
@@ -35,15 +38,24 @@ export class ShopScene extends Phaser.Scene {
       const desc = lvl >= max ? "Maxed out. Pure loaf power." : u.desc[lvl];
       txt(this, x, y + 2, desc, 19, C.inkSoft, false, { wordWrap: { width: 180 } });
       const cost = u.costs[lvl];
-      const b = button(this, x, y + 74, 160, 44, lvl >= max ? "owned ✓" : `Buy · ${cost}`, lvl >= max ? "#efe5cc" : C.mint, () => {
-        if (lvl >= max || d.coins < cost) return;
+      // later levels restock through the week, so the shop always has something new
+      const restock = lvl < max ? (TIER_DAY[lvl] ?? 0) : 0;
+      const inStock = d.day >= restock;
+      const label = lvl >= max ? "owned ✓" : !inStock ? `Restocks after ${DAYS[restock - 1].name.slice(0, 3)}` : `Buy · ${cost}`;
+      const b = button(this, x, y + 74, 180, 44, label, lvl >= max ? "#efe5cc" : C.mint, () => {
+        if (lvl >= max || !inStock || d.coins < cost) return;
         d.coins -= cost;
         d.upgrades[u.id] = lvl + 1;
         save.write();
         this.bought(x, y);
-      }, 22);
-      if (lvl >= max || d.coins < cost) b.setEnabled(lvl >= max ? true : false);
-      if (lvl >= max) b.disableInteractive();
+      }, !inStock && lvl < max ? 18 : 22);
+      if (lvl >= max || !inStock || d.coins < cost) b.setEnabled(lvl >= max);
+      if (lvl >= max || !inStock) b.disableInteractive();
+      if (lvl > 0 && lvl < max && inStock && restock === d.day) {
+        const tag = txt(this, x + 70, y - 104, "new stock!", 18, "#fffaf0", true, { backgroundColor: C.coral, padding: { x: 6, y: 2 } });
+        tag.setAngle(8).setDepth(20);
+        this.tweens.add({ targets: tag, scale: 1.08, yoyo: true, repeat: -1, duration: 600 });
+      }
     });
 
     // ---------------- cosmetics: aprons
@@ -77,28 +89,63 @@ export class ShopScene extends Phaser.Scene {
       if (!owned && d.coins < a.cost) b.setEnabled(false);
     });
 
-    // ---------------- decorations
+    // ---------------- decorations (4 per page)
     const dp = scrap(this, 960, 520, 470, 190, 1.2, false);
     void dp;
-    txt(this, 960, 445, "Café décor  (+5% tips each)", 26, C.ink, true);
-    const icons: Record<string, string> = { plant: "deco_plant", bunting: "icon_polaroids", lights: "icon_lamp", portrait: "deco_portrait" };
-    DECOR.forEach((dc, i) => {
-      const x = 815 + i * 98;
-      const owned = d.decor.includes(dc.id);
-      const ic = boil(this, x, 505, icons[dc.id]).setScale(dc.id === "plant" ? 0.4 : dc.id === "portrait" ? 0.45 : dc.id === "bunting" ? 0.85 : 0.9);
-      void ic;
-      txt(this, x, 548, dc.name, 14, C.inkSoft, false, { wordWrap: { width: 92 } });
-      const b = button(this, x, 586, 80, 34, owned ? "✓" : `${dc.cost}`, owned ? "#efe5cc" : C.mint, () => {
-        if (owned || d.coins < dc.cost) return;
-        d.coins -= dc.cost;
-        d.decor.push(dc.id);
-        save.write();
-        this.bought(x, 505);
-      }, 18);
-      if (owned) b.disableInteractive();
-      else if (d.coins < dc.cost) b.setEnabled(false);
-    });
-
+    txt(this, 960, 445, "Café vibes  (+5% tips each)", 26, C.ink, true);
+    const icons: Record<string, [string, number]> = {
+      plant: ["deco_plant", 0.4],
+      bunting: ["icon_polaroids", 0.85],
+      lights: ["icon_lamp", 0.9],
+      portrait: ["deco_portrait", 0.45],
+      power: ["icon_power", 0.95],
+      events: ["icon_chalk", 0.95],
+      stickers: ["icon_stickers", 0.95],
+      archie: ["icon_archie", 1],
+    };
+    const PER = 4;
+    const pages = Math.ceil(DECOR.length / PER);
+    const firstOpen = Math.floor(Math.max(0, DECOR.findIndex((x) => !d.decor.includes(x.id))) / PER);
+    this.decorPage = Phaser.Math.Clamp(data.decorPage ?? firstOpen, 0, pages - 1);
+    const box = this.add.container(0, 0);
+    const pageT = txt(this, 1160, 447, "", 18, C.inkSoft);
+    const drawDecor = () => {
+      box.removeAll(true);
+      pageT.setText(`${this.decorPage + 1}/${pages}`);
+      DECOR.slice(this.decorPage * PER, this.decorPage * PER + PER).forEach((dc, i) => {
+        const x = 815 + i * 98;
+        const owned = d.decor.includes(dc.id);
+        const [key, sc] = icons[dc.id];
+        box.add(boil(this, x, 505, key).setScale(sc));
+        box.add(txt(this, x, 548, dc.name, 14, C.inkSoft, false, { wordWrap: { width: 92 } }));
+        const b = button(this, x, 586, 80, 34, owned ? "✓" : `${dc.cost}`, owned ? "#efe5cc" : C.mint, () => {
+          if (owned || d.coins < dc.cost) return;
+          d.coins -= dc.cost;
+          d.decor.push(dc.id);
+          save.write();
+          this.bought(x, 505);
+        }, 18);
+        if (owned) b.disableInteractive();
+        else if (d.coins < dc.cost) b.setEnabled(false);
+        box.add(b);
+      });
+    };
+    const flip = (dir: number) => {
+      this.decorPage = (this.decorPage + dir + pages) % pages;
+      audio.play("place");
+      drawDecor();
+    };
+    button(this, 744, 540, 34, 44, "‹", "#fffaf0", () => flip(-1), 26);
+    button(this, 1177, 540, 34, 44, "›", "#fffaf0", () => flip(1), 26);
+    // bigger invisible finger targets around the small page arrows (they sit behind the item buttons)
+    for (const [zx, dir] of [[742, -1], [1190, 1]] as const) {
+      this.add
+        .zone(zx, 540, 60, 130)
+        .setDepth(-1)
+        .setInteractive({ useHandCursor: true })
+        .on("pointerup", () => flip(dir));
+    }
+    drawDecor();
     // ---------------- next day
     const next = Math.min(d.day, DAYS.length - 1);
     const nd = DAYS[next];
@@ -113,6 +160,6 @@ export class ShopScene extends Phaser.Scene {
     audio.play("combo", 3);
     burst(this, x, y, ["star", "star_mint", "heart"], 10);
     floatText(this, x, y - 40, "yay!", C.mintDark, 28);
-    this.time.delayedCall(350, () => this.scene.restart());
+    this.time.delayedCall(350, () => this.scene.restart({ decorPage: this.decorPage }));
   }
 }

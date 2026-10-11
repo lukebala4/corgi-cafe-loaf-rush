@@ -303,72 +303,55 @@ function torso(p: Pen, L: Look) {
   );
 }
 
-function arms(p: Pen, L: Look, pose: HPose) {
+function arm(p: Pen, pts: Pt[], sleeve: string, skin: string) {
+  p.line(pts, { w: 10, color: INK });
+  p.line(pts, { w: 6.5, color: sleeve, j: 0.4 });
+  const h = pts[pts.length - 1];
+  p.circle(h[0], h[1] + 2, 4.6, { fill: skin, w: 2 });
+}
+
+/** Back of a phone in a case, with the camera bump (what an onlooker sees). */
+function phoneBack(p: Pen, x: number, y: number, w: number, h: number) {
+  p.rrect(x, y, w, h, 3, { fill: "#2f2a29", w: 2.2 });
+  p.rrect(x + 2, y + 2, 5.5, 7, 2, { fill: "#4a4442", w: 0 });
+  p.dot(x + 4.7, y + 4.2, 1.3, "#a9c8e8");
+  p.dot(x + 4.7, y + 7.4, 1.1, "#a9c8e8");
+}
+
+function arms(p: Pen, L: Look, pose: HPose, film: boolean) {
   const phone = L.prop === "phone";
   const skin = L.skin;
   const sleeve = L.top === "varsity" ? L.inner ?? "#fffaf0" : L.topColor;
-  // left arm (screen left) always down
   const sitting = pose === "sit";
-  const lHand: Pt = sitting ? [36, 108] : [27, 108 + (pose === "walkA" ? -2 : 2)];
-  p.line(
-    [
-      [31, 66],
-      [27, 86],
-      lHand,
-    ],
-    { w: 10, color: INK },
-  );
-  p.line(
-    [
-      [31, 66],
-      [27, 86],
-      lHand,
-    ],
-    { w: 6.5, color: sleeve, j: 0.4 },
-  );
-  p.circle(lHand[0], lHand[1] + 2, 4.6, { fill: skin, w: 2 });
-  if (phone) {
-    // right arm raised, phone held up to film the barista
-    p.line(
-      [
-        [69, 66],
-        [80, 76],
-        [79, 52],
-      ],
-      { w: 10, color: INK },
-    );
-    p.line(
-      [
-        [69, 66],
-        [80, 76],
-        [79, 52],
-      ],
-      { w: 6.5, color: sleeve, j: 0.4 },
-    );
-    p.circle(79, 50, 4.6, { fill: skin, w: 2 });
-    p.rrect(72, 28, 14, 23, 3, { fill: "#2f2a29", w: 2.2 });
-    p.rrect(74, 30, 10, 18, 2, { fill: "#a9c8e8", w: 0 });
-    p.dot(79, 32, 1.2, "#fffaf0");
+  if (phone && film) {
+    // filming the corgis: a landscape phone held up at chest height with both hands, lens facing us
+    phoneBack(p, 37, 67, 26, 15);
+    arm(p, [[31, 66], [24, 88], [37, 76]], sleeve, skin);
+    arm(p, [[69, 66], [76, 88], [63, 76]], sleeve, skin);
     return;
   }
+  if (phone) {
+    // scrolling: phone low in front of the chest, screen tilted up toward the face
+    if (sitting) {
+      // both hands cradle it, elbows resting in
+      arm(p, [[31, 66], [29, 90], [46, 88]], sleeve, skin);
+      arm(p, [[69, 66], [71, 90], [57, 87]], sleeve, skin);
+      phoneBack(p, 45, 72, 12, 16);
+      p.circle(57, 89, 4.6, { fill: skin, w: 2 }); // thumb hand over the bottom edge
+    } else {
+      // walking while scrolling: one hand on the phone, the other swings
+      const lHand: Pt = [27, 108 + (pose === "walkA" ? -2 : 2)];
+      arm(p, [[31, 66], [27, 86], lHand], sleeve, skin);
+      arm(p, [[69, 66], [72, 90], [59, 86]], sleeve, skin);
+      phoneBack(p, 52, 70, 12, 16);
+      p.circle(59, 88, 4.6, { fill: skin, w: 2 });
+    }
+    return;
+  }
+  const lHand: Pt = sitting ? [36, 108] : [27, 108 + (pose === "walkA" ? -2 : 2)];
+  arm(p, [[31, 66], [27, 86], lHand], sleeve, skin);
   const rHand: Pt = sitting ? [64, 108] : [73, 108 + (pose === "walkA" ? 2 : -2)];
-  p.line(
-    [
-      [69, 66],
-      [73, 86],
-      rHand,
-    ],
-    { w: 10, color: INK },
-  );
-  p.line(
-    [
-      [69, 66],
-      [73, 86],
-      rHand,
-    ],
-    { w: 6.5, color: sleeve, j: 0.4 },
-  );
-  p.circle(rHand[0], rHand[1] + 2, 4.6, { fill: skin, w: 2 });
+  arm(p, [[69, 66], [73, 86], rHand], sleeve, skin);
 }
 
 function prop(p: Pen, L: Look, pose: HPose) {
@@ -586,7 +569,7 @@ function hairFront(p: Pen, L: Look) {
   }
 }
 
-function face(p: Pen, L: Look, mood: HMood) {
+function face(p: Pen, L: Look, mood: HMood, down = false) {
   const brow = L.hair === "bald" || L.hair === "hijab" ? INK : L.hairColor;
   if (mood === "h") {
     for (const x of [43, 57])
@@ -613,10 +596,18 @@ function face(p: Pen, L: Look, mood: HMood) {
     p.ellipse(38.5, 45, 3.6, 2.2, { fill: "rgba(242,120,107,0.55)", w: 0 });
     p.ellipse(61.5, 45, 3.6, 2.2, { fill: "rgba(242,120,107,0.55)", w: 0 });
   } else {
-    p.dot(43, 38.5, 2.2);
-    p.dot(57, 38.5, 2.2);
-    p.dot(43.7, 37.7, 0.7, "#fff");
-    p.dot(57.7, 37.7, 0.7, "#fff");
+    if (down) {
+      // eyes lowered to the screen: pupils drop, lids half closed
+      p.dot(43, 40.2, 2);
+      p.dot(57, 40.2, 2);
+      p.seg(40, 38.4, 46, 38.4, { w: 1.8 });
+      p.seg(54, 38.4, 60, 38.4, { w: 1.8 });
+    } else {
+      p.dot(43, 38.5, 2.2);
+      p.dot(57, 38.5, 2.2);
+      p.dot(43.7, 37.7, 0.7, "#fff");
+      p.dot(57.7, 37.7, 0.7, "#fff");
+    }
     if (mood === "a") {
       p.seg(38.5, 31.5, 46, 34.5, { w: 2.4, color: brow });
       p.seg(61.5, 31.5, 54, 34.5, { w: 2.4, color: brow });
@@ -756,7 +747,7 @@ function extrasHead(p: Pen, L: Look) {
 }
 
 /** Draw one person. */
-export function drawHuman(p: Pen, L: Look, pose: HPose, mood: HMood) {
+export function drawHuman(p: Pen, L: Look, pose: HPose, mood: HMood, film = false) {
   legs(p, L, pose);
   hairBack(p, L);
   torso(p, L);
@@ -769,9 +760,9 @@ export function drawHuman(p: Pen, L: Look, pose: HPose, mood: HMood) {
   if (L.hair === "hijab") p.ellipse(50, 38, 14, 16, { fill: L.skin, w: 2.4 });
   else p.ellipse(50, 36, 17, 19, { fill: L.skin, w: 3 });
   hairFront(p, L);
-  face(p, L, mood);
+  face(p, L, mood, L.prop === "phone" && !film && mood === "n");
   extrasHead(p, L);
-  arms(p, L, pose);
+  arms(p, L, pose, film);
   prop(p, L, pose);
 }
 

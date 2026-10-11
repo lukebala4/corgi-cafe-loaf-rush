@@ -3,7 +3,7 @@ import { COLORS as C, DAYS, ITEM_INFO, ItemId, RECIPE_HINTS } from "./config";
 import { boil, stickerTex } from "./art/textures";
 import { scrap, txt } from "./ui";
 import { CorgiRig } from "./game/corgi";
-import { LONDON_MENU, LONDON_MENU_RETRIEVED, LONDON_MENU_SOURCE } from "./data/londonMenu";
+import { LONDON_MENU } from "./data/londonMenu";
 import { save } from "./save";
 
 /** The public play link that every share points at (the game itself, not the Manus preview). */
@@ -331,14 +331,14 @@ export function openMenuInfo(scene: Phaser.Scene, onClose?: () => void, today?: 
   modal(
     scene,
     (box) => {
-      box.appendChild(el("h2", "", today ? `Today's menu: ${today.dayName}` : "What customers can order"));
+      box.appendChild(el("h2", "", today ? `${today.dayName}'s menu` : "On the menu"));
       box.appendChild(
         el(
           "p",
           "",
           today
-            ? "Customers only order the items marked TODAY. The rest join the menu later in the week."
-            : "These are real items from Corgi Cafe London's menu. Customers order them in the game, and new ones join the menu as the week goes on.",
+            ? "Anything marked TODAY could be ordered this shift. The rest arrive later in the week."
+            : "Pulled, poured and toasted by very short baristas. New treats arrive as the week goes on.",
         ),
       );
       const list = el("div", "cc-list");
@@ -373,7 +373,7 @@ export function openMenuInfo(scene: Phaser.Scene, onClose?: () => void, today?: 
       }
       // the full café menu, folded away
       const det = el("details", "cc-full");
-      det.appendChild(el("summary", "", `Full Corgi Cafe London menu (${LONDON_MENU.length} items, not all in the game)`));
+      det.appendChild(el("summary", "", "The whole Corgi Cafe menu"));
       let cat = "";
       for (const r of LONDON_MENU) {
         if (r.cat !== cat) {
@@ -386,13 +386,6 @@ export function openMenuInfo(scene: Phaser.Scene, onClose?: () => void, today?: 
         det.appendChild(row);
       }
       list.appendChild(det);
-      const src = el("p", "cc-src", `Prices in pounds from the café's own ordering menu, checked ${LONDON_MENU_RETRIEVED}; they can change. In the game you earn coins. `);
-      const a = el("a", "", "Source");
-      a.href = LONDON_MENU_SOURCE;
-      a.target = "_blank";
-      a.rel = "noopener";
-      src.appendChild(a);
-      list.appendChild(src);
       box.appendChild(list);
       const row = el("div", "cc-row");
       const done = el("button", "cc-btn mint", "Back to the café");

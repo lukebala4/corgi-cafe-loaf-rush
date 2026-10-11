@@ -81,11 +81,11 @@ export class ShopScene extends Phaser.Scene {
     const dp = scrap(this, 960, 520, 470, 190, 1.2, false);
     void dp;
     txt(this, 960, 445, "Café décor  (+5% tips each)", 26, C.ink, true);
-    const icons: Record<string, string> = { plant: "deco_plant", bunting: "heart", lights: "star", portrait: "deco_portrait" };
+    const icons: Record<string, string> = { plant: "deco_plant", bunting: "icon_polaroids", lights: "icon_lamp", portrait: "deco_portrait" };
     DECOR.forEach((dc, i) => {
       const x = 815 + i * 98;
       const owned = d.decor.includes(dc.id);
-      const ic = boil(this, x, 505, icons[dc.id]).setScale(dc.id === "plant" ? 0.4 : dc.id === "portrait" ? 0.45 : 1.6);
+      const ic = boil(this, x, 505, icons[dc.id]).setScale(dc.id === "plant" ? 0.4 : dc.id === "portrait" ? 0.45 : dc.id === "bunting" ? 0.85 : 0.9);
       void ic;
       txt(this, x, 548, dc.name, 14, C.inkSoft, false, { wordWrap: { width: 92 } });
       const b = button(this, x, 586, 80, 34, owned ? "✓" : `${dc.cost}`, owned ? "#efe5cc" : C.mint, () => {

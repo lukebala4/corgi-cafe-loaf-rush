@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BREW_TIME, COLORS as C, ITEM_INFO, ItemId, StationId } from "../config";
+import { BLEND_TIME, BREW_TIME, COLORS as C, ITEM_INFO, ItemId, STATION_BASE_Y, StationId } from "../config";
 import { boil } from "../art/textures";
 import { puff, txt } from "../ui";
 import { audio } from "../audio";
@@ -14,8 +14,30 @@ export interface Action {
 
 type SState = "idle" | "busy" | "ready";
 
-const TOAST_TIME = 4;
-const BURN_TIME = 8;
+export const PRESS_TIME = 4;
+export const BURN_TIME = 8;
+const STEAM_TIME = 1.2;
+
+/** A recipe step a station can perform on the item in the corgi's paws. */
+interface Step {
+  from: ItemId;
+  to: ItemId;
+  label: string;
+  dur: number;
+  menu: ItemId; // only offered when this item is on today's menu
+}
+
+const NAMES: Partial<Record<StationId, string>> = {
+  press: "PRESS",
+  croissant: "CROISSANTS",
+  cake: "CAKE",
+  blender: "BLENDER",
+  cups: "CUPS",
+  milk: "MILK",
+  espresso: "ESPRESSO",
+  cold: "COLD BAR",
+  trash: "BIN",
+};
 
 export class Station {
   g: GameScene;
@@ -43,29 +65,20 @@ export class Station {
     this.g = g;
     this.id = id;
     this.x = x;
-    const isPad = id === "padA" || id === "padB";
-    if (isPad) {
+    if (this.isPad) {
       this.y = padY!;
       this.ix = x;
       this.iy = padY!;
       this.radius = 62;
       this.sprite = boil(g, x, this.y, "st_pad").setDepth(this.y - 30);
     } else {
-      this.y = 128;
+      this.y = STATION_BASE_Y;
       this.ix = x;
       this.iy = 180;
-      this.radius = 72;
+      this.radius = id === "croissant" || id === "cake" ? 50 : 64;
       this.sprite = boil(g, x, this.y, `st_${id}`).setOrigin(0.5, 1).setScale(0.86).setDepth(10);
-      const names: Record<string, string> = {
-        cups: "CUPS",
-        espresso: "ESPRESSO",
-        milk: "FOAM ART",
-        ice: "ICE",
-        pastry: "PASTRY",
-        toaster: "TOASTER",
-        trash: "TRASH",
-      };
-      this.label = txt(g, x, 140, names[id], 16, C.inkSoft, true).setDepth(11);
+      this.label = txt(g, x, 140, NAMES[id] ?? id, 16, C.inkSoft, true).setDepth(11);
+      if (this.label.width > 92) this.label.setScale(92 / this.label.width);
     }
     this.progress = g.add.graphics().setDepth(4500);
     this.locked = locked;
@@ -73,10 +86,14 @@ export class Station {
       const n = g.add.container(x, 92).setDepth(12).setAngle(Phaser.Math.Between(-6, 6));
       n.add(g.add.image(0, 0, "soon", 0));
       n.add(txt(g, 0, -8, "coming", 18, C.inkSoft, true));
-      n.add(txt(g, 0, 12, "soon!", 20, C.coral, true));
+      n.add(txt(g, 0, 12, "soon!", 20, C.orangeDark, true));
       this.lockNote = n;
       this.sprite.setAlpha(0.35);
     }
+  }
+
+  get isPad() {
+    return this.id === "padA" || this.id === "padB";
   }
 
   private bounce() {
@@ -90,26 +107,48 @@ export class Station {
     this.outSprite?.destroy();
     this.outSprite = undefined;
     if (item) {
-      const isPad = this.id === "padA" || this.id === "padB";
-      this.outSprite = boil(this.g, this.x + (isPad ? 0 : 0), isPad ? this.y - 10 : 64, `item_${item}`).setDepth(isPad ? this.y + 1 : 30);
-      if (!isPad) {
+      this.outSprite = boil(this.g, this.x, this.isPad ? this.y - 10 : 64, `item_${item}`).setDepth(this.isPad ? this.y + 1 : 30);
+      if (!this.isPad) {
         this.outSprite.setScale(0.95);
-        this.g.tweens.add({ targets: this.outSprite, y: 56, yoyo: true, repeat: -1, duration: 420, ease: "Sine.inOut" });
+        if (!save.data.settings.reducedMotion)
+          this.g.tweens.add({ targets: this.outSprite, y: 56, yoyo: true, repeat: -1, duration: 420, ease: "Sine.inOut" });
       }
     }
   }
 
-  private setBusyVisual(key: string | null, y = 106) {
+  private setBusyVisual(key: string | null, y = 106, scale = 0.6) {
     this.busySprite?.destroy();
     this.busySprite = undefined;
-    if (key) this.busySprite = boil(this.g, this.x, y, key).setDepth(20).setScale(0.6);
+    if (key) this.busySprite = boil(this.g, this.x, y, key).setDepth(20).setScale(scale);
   }
 
-  /** What would happen if the player interacted now? */
+  /** Recipe steps this station offers today. */
+  private steps(): Step[] {
+    const brew = BREW_TIME[save.data.upgrades.espresso];
+    switch (this.id) {
+      case "espresso":
+        return [
+          { from: "cup", to: "americano", label: "brew an Americano", dur: brew, menu: "americano" },
+          { from: "milk", to: "latte", label: "pour espresso: Latte", dur: brew, menu: "latte" },
+        ];
+      case "milk":
+        return [{ from: "cup", to: "milk", label: "steam milk into the cup", dur: STEAM_TIME, menu: "latte" }];
+      case "cold":
+        return [
+          { from: "latte", to: "icedlatte", label: "pour over ice: Iced Latte", dur: 0.8, menu: "icedlatte" },
+          { from: "icedlatte", to: "pally", label: "pistachio foam: Pally Pick-Me-Up", dur: 1.4, menu: "pally" },
+          { from: "cup", to: "daytona", label: "cold brew + coconut: Brew Daytona", dur: 1.2, menu: "daytona" },
+        ];
+      case "blender":
+        return [{ from: "cup", to: "juicebox", label: "blend berries: The Juicebox", dur: BLEND_TIME[save.data.upgrades.espresso], menu: "juicebox" }];
+    }
+    return [];
+  }
+
+  /** What would happen if the player interacted now? Uses the item in the corgi's paw first (top slot). */
   action(held: ItemId[], capacity: number): Action | null {
     if (this.locked) return { label: "coming soon!", ok: false };
     const free = held.length < capacity;
-    const has = (i: ItemId) => held.lastIndexOf(i);
     const g = this.g;
     const take = (verb: string): Action =>
       free
@@ -125,19 +164,21 @@ export class Station {
             },
           }
         : { label: "paws full!", ok: false };
+    const grab = (it: ItemId, verb: string): Action =>
+      free ? { label: `${verb}`, ok: true, run: () => (g.giveItem(it), this.bounce()) } : { label: "paws full!", ok: false };
 
     switch (this.id) {
       case "cups":
-        return free ? { label: "grab a cup", ok: true, run: () => (g.giveItem("cup"), this.bounce()) } : { label: "paws full!", ok: false };
-      case "pastry":
-        return free
-          ? { label: "grab a croissant", ok: true, run: () => (g.giveItem("croissant"), this.bounce()) }
-          : { label: "paws full!", ok: false };
+        return grab("cup", "grab a Corgi Cafe cup");
+      case "croissant":
+        return grab("croissant", "grab a Plain Croissant");
+      case "cake":
+        return grab("cake", "slice Corgi Orange Cake");
       case "trash": {
-        if (!held.length) return { label: "trash (nothing to toss)", ok: false };
+        if (!held.length) return { label: "bin (nothing to toss)", ok: false };
         const top = held[held.length - 1];
         return {
-          label: `toss ${ITEM_INFO[top].name}`,
+          label: `bin the ${ITEM_INFO[top].name}`,
           ok: true,
           run: () => {
             g.takeItemAt(held.length - 1);
@@ -147,77 +188,44 @@ export class Station {
           },
         };
       }
-      case "espresso": {
-        if (this.state === "ready") return take("take");
-        if (this.state === "busy") return { label: "brewing…", ok: false };
-        const ci = has("cup");
-        if (ci < 0) return { label: "needs an empty cup", ok: false };
+      case "press": {
+        if (this.state === "ready") return take(this.out === "burnt" ? "rescue the" : "take");
+        if (this.state === "busy") return { label: "pressing...", ok: false };
         return {
-          label: "brew coffee",
+          label: "press a Chicken sourdough",
           ok: true,
           run: () => {
-            g.takeItemAt(ci);
-            this.start(BREW_TIME[save.data.upgrades.espresso], "coffee");
-            this.setBusyVisual("item_cup", 112);
-            audio.play("brew");
-          },
-        };
-      }
-      case "milk": {
-        if (this.state === "ready") return take("take");
-        if (this.state === "busy") return { label: "drawing art…", ok: false };
-        const menu = g.menu;
-        const opts: { i: number; label: string; out: ItemId; dur: number }[] = [];
-        const li = has("latte");
-        if (li >= 0 && g.fancyAllowed) opts.push({ i: li, label: "make it FANCY", out: "fancy", dur: 1.6 });
-        const co = has("coffee");
-        if (co >= 0 && menu.includes("latte")) opts.push({ i: co, label: "draw corgi latte art", out: "latte", dur: 1.2 });
-        const cu = has("cup");
-        if (cu >= 0 && menu.includes("pupcup")) opts.push({ i: cu, label: "make puppuccino", out: "pupcup", dur: 1.0 });
-        if (!opts.length) {
-          const need = [menu.includes("latte") ? "coffee" : "", menu.includes("pupcup") ? "cup" : "", g.fancyAllowed ? "latte" : ""].filter(Boolean);
-          return { label: `needs ${need.join(" / ")}`, ok: false };
-        }
-        // prefer the item on top of the stack
-        opts.sort((a, b) => b.i - a.i);
-        const o = opts[0];
-        return {
-          label: o.label,
-          ok: true,
-          run: () => {
-            g.takeItemAt(o.i);
-            this.start(o.dur, o.out);
-            this.setBusyVisual(o.out === "fancy" ? "item_latte" : o.out === "pupcup" ? "item_cup" : "item_coffee", 100);
-            audio.play("art");
-          },
-        };
-      }
-      case "ice": {
-        const co = has("coffee");
-        if (co < 0) return { label: "needs a hot coffee", ok: false };
-        return {
-          label: "ice it!",
-          ok: true,
-          run: () => {
-            g.replaceItemAt(co, "iced");
-            audio.play("pop");
-            this.bounce();
-          },
-        };
-      }
-      case "toaster": {
-        if (this.state === "ready") return take(this.out === "burnt" ? "rescue" : "take");
-        if (this.state === "busy") return { label: "toasting…", ok: false };
-        return {
-          label: "toast bread",
-          ok: true,
-          run: () => {
-            this.start(TOAST_TIME, "toast");
+            this.start(PRESS_TIME, "sourdough");
             this.setBusyVisual(null);
             audio.play("place");
             this.bounce();
           },
         };
+      }
+      case "espresso":
+      case "milk":
+      case "cold":
+      case "blender": {
+        if (this.state === "ready") return take("take");
+        if (this.state === "busy") return { label: this.id === "blender" ? "blending..." : this.id === "milk" ? "steaming..." : "brewing...", ok: false };
+        const steps = this.steps().filter((s) => g.menu.includes(s.menu));
+        // The item in the paw (top slot) decides; the other slot is used only if the paw item fits nothing.
+        for (let i = held.length - 1; i >= 0; i--) {
+          const st = steps.find((s) => s.from === held[i]);
+          if (!st) continue;
+          return {
+            label: st.label,
+            ok: true,
+            run: () => {
+              g.takeItemAt(i);
+              this.start(st.dur, st.to);
+              this.setBusyVisual(this.id === "blender" ? null : `item_${st.from}`, this.id === "cold" ? 104 : 108);
+              audio.play(this.id === "milk" ? "art" : this.id === "cold" ? "pop" : "brew");
+            },
+          };
+        }
+        const needs = [...new Set(steps.map((s) => ITEM_INFO[s.from].name))];
+        return { label: needs.length ? `needs ${needs.join(" or ")}` : "not on today's menu", ok: false };
       }
       case "padA":
       case "padB": {
@@ -243,7 +251,7 @@ export class Station {
           };
         }
         if (this.out) return { label: "paws full!", ok: false };
-        return { label: g.assistant ? "pass counter (Biscuit delivers)" : "pass counter (set items here)", ok: false };
+        return { label: g.assistant ? "pass (Biscuit delivers)" : "pass (set items here)", ok: false };
       }
     }
     return null;
@@ -273,16 +281,20 @@ export class Station {
     if (this.state === "busy") {
       this.t += dt;
       this.steamT -= dt;
-      if (this.steamT <= 0 && this.id !== "milk") {
+      if (this.steamT <= 0 && this.id !== "cold") {
         this.steamT = 0.35;
         const s = this.g.add.image(this.x + Phaser.Math.Between(-14, 14), 70, "steam", 0).setDepth(25).setScale(0.4).setAlpha(0.7);
         this.g.tweens.add({ targets: s, y: 30, alpha: 0, duration: 800, onComplete: () => s.destroy() });
       }
-      if (this.id === "milk" && this.busySprite) this.busySprite.angle = Math.sin(this.t * 20) * 8;
+      if (!save.data.settings.reducedMotion) {
+        if (this.id === "milk" && this.busySprite) this.busySprite.angle = Math.sin(this.t * 20) * 8;
+        if (this.id === "blender") this.sprite.x = this.x + Math.sin(this.t * 60) * 1.6;
+        if (this.id === "press") this.sprite.y = this.y + Math.abs(Math.sin(this.t * 3)) * 1.5;
+      }
       const f = Math.min(1, this.t / this.dur);
       g.fillStyle(0xffffff, 0.95);
       g.fillCircle(this.x + 46, 52, 15);
-      g.lineStyle(5, 0x7fcfb0, 1);
+      g.lineStyle(5, 0xf0702a, 1);
       g.beginPath();
       g.arc(this.x + 46, 52, 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * f);
       g.strokePath();
@@ -291,15 +303,17 @@ export class Station {
       if (this.t >= this.dur) {
         this.state = "ready";
         this.readyT = 0;
+        this.sprite.x = this.x;
+        this.sprite.y = this.y;
         const it = this.out!;
-        this.setBusyVisual(this.id === "toaster" ? "toast_up" : null, 76);
+        this.setBusyVisual(this.id === "press" ? "press_hot" : null, 40, 1);
         this.setOut(it);
-        audio.play(this.id === "toaster" ? "pop" : "ding");
+        audio.play(this.id === "press" ? "pop" : "ding");
         this.g.stationReady(this);
       }
-    } else if (this.state === "ready" && this.id === "toaster") {
+    } else if (this.state === "ready" && this.id === "press") {
       this.readyT += dt;
-      if (this.out === "toast") {
+      if (this.out === "sourdough") {
         const warn = this.readyT / BURN_TIME;
         if (warn > 0.5) {
           g.fillStyle(0xf2786b, 0.25 + 0.25 * Math.sin(this.readyT * 14));
@@ -307,6 +321,7 @@ export class Station {
         }
         if (this.readyT >= BURN_TIME) {
           this.setOut("burnt");
+          this.setBusyVisual(null);
           audio.play("burn");
           puff(this.g, this.x, 70, 6);
           this.g.floatAt(this.x, 60, "burnt! (oops)", C.coral);
@@ -320,6 +335,8 @@ export class Station {
     this.state = "idle";
     this.setOut(null);
     this.setBusyVisual(null);
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
     this.progress.clear();
   }
 }

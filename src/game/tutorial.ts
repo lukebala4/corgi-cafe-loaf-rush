@@ -37,7 +37,7 @@ export class Tutorial {
     const iy = (id: string) => ({ x: st(id).ix, y: st(id).iy - 60 });
     this.steps = [
       {
-        text: () => (t.touchMode ? "Hi, barista! Drag on the left side of the screen to walk to the red X." : "Hi, barista! Walk to the red X with WASD or the arrow keys."),
+        text: () => (t.touchMode ? "Welcome to Corgi Cafe, 74 Great Eastern Street! Drag on the left side of the screen to walk to the red X." : "Welcome to Corgi Cafe, 74 Great Eastern Street! Walk to the red X with WASD or the arrow keys."),
         enter: () => this.xspot.setVisible(true),
         target: () => ({ x: 420, y: 160 }),
         done: () => Math.hypot(g.player.x - 420, g.player.y - 205) < 45,
@@ -51,41 +51,41 @@ export class Tutorial {
         done: () => this.dashSeen,
       },
       {
-        text: () => `Coffee time. Stand by the CUPS and press ${t.interactLabel} to grab a cup.`,
+        text: () => `Americano time. Stand by the CUPS and press ${t.interactLabel} to grab a branded cup.`,
         target: () => iy("cups"),
         done: () => g.player.items.includes("cup"),
       },
       {
-        text: () => `Take it to the ESPRESSO machine and press ${t.interactLabel} to brew.`,
+        text: () => `Carry the cup to the ESPRESSO machine and press ${t.interactLabel} to pull a shot.`,
         target: () => iy("espresso"),
         done: () => st("espresso").state !== "idle",
       },
       {
-        text: () => `Wait for the ding… then press ${t.interactLabel} to grab your coffee.`,
+        text: () => `Wait for the ding, then press ${t.interactLabel} to pick up your Americano.`,
         target: () => iy("espresso"),
-        done: () => g.player.items.includes("coffee"),
+        done: () => g.player.items.includes("americano"),
       },
       {
-        text: () => `A customer! Walk through a doorway and press ${t.interactLabel} next to the golden retriever.`,
-        enter: () => g.spawnScripted("retriever", ["coffee"], 0),
+        text: () => `A regular just sat down. Walk out through a gap in the counter and press ${t.interactLabel} beside them.`,
+        enter: () => g.spawnScripted("regular", ["americano"], 0),
         target: () => {
-          const c = g.customers.find((c) => c.breed === "retriever" && c.waiting);
+          const c = g.customers.find((c) => c.role === "regular" && c.waiting);
           return c ? { x: c.x, y: c.y - 200 } : null;
         },
         done: () => g.stats.served >= 1,
       },
       {
-        text: () => "The pug wants a croissant. Grab one from the PASTRY case and deliver it!",
-        enter: () => g.spawnScripted("pug", ["croissant"], 1),
+        text: () => "A first-time visitor wants a Plain Croissant. Grab one from the CROISSANTS basket and serve it!",
+        enter: () => g.spawnScripted("newcomer", ["croissant"], 1),
         target: () => {
-          if (!g.player.items.includes("croissant")) return iy("pastry");
-          const c = g.customers.find((c) => c.breed === "pug" && c.waiting);
+          if (!g.player.items.includes("croissant")) return iy("croissant");
+          const c = g.customers.find((c) => c.role === "newcomer" && c.waiting);
           return c ? { x: c.x, y: c.y - 200 } : null;
         },
         done: () => g.stats.served >= 2,
       },
       {
-        text: () => "Purrfect! Fast service = bigger tips + combos. Patience bars run out, so hustle. Ready?",
+        text: () => "Brilliant! Humans order, corgis serve. Fast service means bigger tips and combos, and patience bars run out. Ready?",
         enter: () => {
           this.goBtn = button(g, 900, 600, 220, 54, "Open the café!", C.mint, () => this.finish(), 26).setDepth(8100);
         },

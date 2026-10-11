@@ -1,4 +1,4 @@
-import { BACK_COUNTER, DOORWAYS, PASS_H, PASS_Y, PLAY, TABLES, TABLE_H, TABLE_W } from "../config";
+import { BACK_COUNTER, COLUMN, DOORWAYS, PASS_H, PASS_Y, PLAY, TABLES, TABLE_H } from "../config";
 
 export interface Rect {
   x: number;
@@ -15,14 +15,18 @@ export class World {
 
   constructor() {
     const bc = BACK_COUNTER;
-    this.statics.push({ x: bc.x - 20, y: 0, w: bc.w + 40, h: bc.y + bc.h, tag: "counter" });
+    // back bar + the rear-corner wall: everything above the kitchen lane is solid
+    this.statics.push({ x: PLAY.left - 20, y: 0, w: PLAY.right - PLAY.left + 40, h: bc.y + bc.h, tag: "counter" });
     let x0 = PLAY.left - 20;
     for (const d of DOORWAYS) {
-      this.statics.push({ x: x0, y: PASS_Y, w: d.x0 - x0, h: PASS_H, tag: "pass" });
+      if (d.x0 > x0) this.statics.push({ x: x0, y: PASS_Y, w: d.x0 - x0, h: PASS_H, tag: "pass" });
       x0 = d.x1;
     }
     this.statics.push({ x: x0, y: PASS_Y, w: PLAY.right + 20 - x0, h: PASS_H, tag: "pass" });
-    for (const t of TABLES) this.statics.push({ x: t.x - TABLE_W / 2, y: t.y - TABLE_H / 2, w: TABLE_W, h: TABLE_H, tag: "table" });
+    for (const t of TABLES) this.statics.push({ x: t.x - t.w / 2, y: t.y - TABLE_H / 2, w: t.w, h: TABLE_H, tag: "table" });
+    this.statics.push({ x: COLUMN.x - COLUMN.r, y: COLUMN.y - COLUMN.r, w: COLUMN.r * 2, h: COLUMN.r * 2, tag: "column" });
+    // window bar along the street frontage, below the door
+    this.statics.push({ x: 1010, y: 556, w: 190, h: 24, tag: "windowbar" });
   }
 
   setDynamic(id: string, r: Rect | null) {

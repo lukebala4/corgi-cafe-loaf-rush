@@ -1,32 +1,47 @@
 # Corgi Café: Loaf Rush
 
-A hand-drawn notebook café game staffed entirely by corgis.
+A hand-drawn notebook café game set in the orange Corgi Cafe at 74 Great Eastern Street, Shoreditch. Humans order, corgis brew, carry and serve.
 
-## Play
+**Play:** https://lukebala4.github.io/corgi-cafe-loaf-rush/
 
-Once GitHub Pages finishes its first deployment, open the Pages URL shown in the repository's **Settings → Pages** section.
+## How to play
+
+Seven shifts, Monday to Sunday Brunch, about three minutes each. Read the order bubbles above each customer, make the item at the right station and hand it over before their patience runs out. Coins buy upgrades and café décor between days.
+
+| Item | How to make it |
+| --- | --- |
+| Americano | cup stack, then espresso |
+| Latte | cup stack, milk, then espresso |
+| Iced Latte | make a Latte, then cold bar |
+| Pally Pick-Me-Up | make an Iced Latte, then cold bar again |
+| Brew Daytona | cup stack, then cold bar |
+| The Juicebox | cup stack, then blender |
+| Plain Croissant | left side of the pastry case |
+| Corgi Orange Cake | right side of the pastry case |
+| Chicken sourdough | toastie press (take it out before it burns) |
+
+Items unlock day by day. Real GBP prices and the full 61-item London menu are in the in-game **Menu** (title screen or pause menu); game coins are a separate fictional balance.
 
 ## Controls
 
-- **WASD / arrow keys:** move
-- **Space / Enter / E:** interact
-- **Shift:** zoomies dash
-- **Esc / P:** pause
-- **Mobile:** virtual joystick, PAW, and ZOOM buttons
+| Action | Keyboard | Touch |
+| --- | --- | --- |
+| Move | WASD or arrow keys | Virtual joystick |
+| Interact | Space, Enter or E | PAW |
+| Zoomies dash | Shift | ZOOM |
+| Swap item in paw (with the second paw slot upgrade) | Q | SWAP |
+| Pause | Esc or P | Pause button |
 
-The game saves progress locally in the browser. Audio begins after the first interaction.
+Progress saves in the browser. Audio starts after your first tap or key press. Results and the final screen can make a shareable scorecard image (Share, Download PNG, Copy link); nothing is posted unless you choose to.
 
 ## Development
 
 ```bash
 pnpm install
 pnpm dev
-```
-
-Production build:
-
-```bash
 pnpm build
 ```
 
-The project is built with Phaser, TypeScript, and Vite. Artwork is procedural and follows the notebook-doodle visual direction.
+Phaser 3, TypeScript and Vite. All artwork is drawn procedurally in code (`src/art/`); no photographs are shipped. See [docs/LONDON_ADAPTATION.md](docs/LONDON_ADAPTATION.md) for the reference-to-game mapping, menu evidence, inferred values and test results.
+
+Corgi Cafe is a real café; this is an unofficial fan game. Staff corgis and customers are fictional.

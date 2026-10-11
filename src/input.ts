@@ -12,7 +12,9 @@ export class Controls {
   private interactLatch = false;
   private dashLatch = false;
   private pauseLatch = false;
+  private swapLatch = false;
   touchMode = false;
+  private swapWanted = false;
   // joystick
   private joyId: number | null = null;
   private joyOrigin = new Phaser.Math.Vector2();
@@ -21,6 +23,7 @@ export class Controls {
   private joyKnob!: Phaser.GameObjects.Image;
   private btnPaw!: Phaser.GameObjects.Container;
   private btnDash!: Phaser.GameObjects.Container;
+  private btnSwap!: Phaser.GameObjects.Container;
   private dashCdArc!: Phaser.GameObjects.Graphics;
   enabled = true;
 
@@ -43,6 +46,7 @@ export class Controls {
       shift: K.SHIFT,
       esc: K.ESC,
       p: K.P,
+      q: K.Q,
     }) as Record<string, Phaser.Input.Keyboard.Key>;
     kb.addCapture([K.UP, K.DOWN, K.LEFT, K.RIGHT, K.SPACE, K.SHIFT]);
     const onKey = (k: string, f: () => void) => this.keys[k].on("down", () => {
@@ -56,6 +60,7 @@ export class Controls {
     onKey("e", () => (this.interactLatch = true));
     onKey("enter", () => (this.interactLatch = true));
     onKey("shift", () => (this.dashLatch = true));
+    onKey("q", () => (this.swapLatch = true));
     this.keys.esc.on("down", () => (this.pauseLatch = true));
     this.keys.p.on("down", () => (this.pauseLatch = true));
 
@@ -73,6 +78,11 @@ export class Controls {
       p.circle(75, 74, 66, { fill: "#fff", w: 2 });
       p.circle(75, 74, 58, { fill: C.mint, w: 3.5 });
     });
+    doodle(s, "touch_btn_orange", 96, 96, (p) => {
+      p.circle(48, 52, 38, { fill: "rgba(43,38,34,0.18)", w: 0 });
+      p.circle(48, 48, 40, { fill: "#fff", w: 2 });
+      p.circle(48, 48, 34, { fill: C.orangeSoft, w: 3 });
+    });
     doodle(s, "touch_btn_coral", 130, 130, (p) => {
       p.circle(65, 70, 54, { fill: "rgba(43,38,34,0.18)", w: 0 });
       p.circle(65, 64, 56, { fill: "#fff", w: 2 });
@@ -80,11 +90,11 @@ export class Controls {
     });
     this.joyBase = s.add.image(190, H - 170, "joy_base", 0).setDepth(9000).setAlpha(0.85).setScrollFactor(0);
     this.joyKnob = s.add.image(190, H - 170, "joy_knob", 0).setDepth(9001).setScrollFactor(0);
-    const mk = (x: number, y: number, key: string, label: string, sub: string, onDown: () => void) => {
+    const mk = (x: number, y: number, key: string, label: string, sub: string, onDown: () => void, small = false) => {
       const c = s.add.container(x, y).setDepth(9000).setScrollFactor(0);
       const img = s.add.image(0, 0, key, 0);
-      const t = txt(s, 0, -8, label, 30, C.ink, true);
-      const t2 = txt(s, 0, 22, sub, 16, C.ink);
+      const t = txt(s, 0, small ? -6 : -8, label, small ? 22 : 30, C.ink, true);
+      const t2 = txt(s, 0, small ? 16 : 22, sub, small ? 13 : 16, C.ink);
       c.add([img, t, t2]);
       c.setSize(img.width, img.height);
       c.setInteractive(new Phaser.Geom.Circle(img.width / 2, img.height / 2, img.width / 2), Phaser.Geom.Circle.Contains);
@@ -99,6 +109,7 @@ export class Controls {
     };
     this.btnPaw = mk(W - 120, H - 150, "touch_btn_mint", "PAW", "interact", () => (this.interactLatch = true));
     this.btnDash = mk(W - 270, H - 85, "touch_btn_coral", "ZOOM", "dash", () => (this.dashLatch = true));
+    this.btnSwap = mk(W - 92, H - 290, "touch_btn_orange", "SWAP", "paw item", () => (this.swapLatch = true), true);
     this.dashCdArc = s.add.graphics().setDepth(9002).setScrollFactor(0);
 
     s.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
@@ -145,6 +156,14 @@ export class Controls {
     this.btnPaw?.setVisible(v);
     this.btnDash?.setVisible(v);
     this.dashCdArc?.setVisible(v);
+    this.btnSwap?.setVisible(v && this.swapWanted);
+  }
+
+  /** The SWAP touch button only shows while two items are carried. */
+  setSwapAvailable(v: boolean) {
+    if (v === this.swapWanted) return;
+    this.swapWanted = v;
+    this.btnSwap?.setVisible(this.touchMode && v);
   }
 
   /** Show dash cooldown on the touch button. */
@@ -186,17 +205,25 @@ export class Controls {
     this.dashLatch = false;
     return v;
   }
+  takeSwap() {
+    const v = this.swapLatch;
+    this.swapLatch = false;
+    return v;
+  }
   takePause() {
     const v = this.pauseLatch;
     this.pauseLatch = false;
     return v;
   }
   clear() {
-    this.interactLatch = this.dashLatch = this.pauseLatch = false;
+    this.interactLatch = this.dashLatch = this.pauseLatch = this.swapLatch = false;
     this.joyId = null;
     this.joyVec.set(0, 0);
   }
   get interactLabel() {
     return this.touchMode ? "PAW" : "SPACE";
+  }
+  get swapLabel() {
+    return this.touchMode ? "SWAP" : "Q";
   }
 }

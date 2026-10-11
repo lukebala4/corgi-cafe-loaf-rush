@@ -4,28 +4,40 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#fbf3df" />
-    <meta name="description" content="Corgi Café: Loaf Rush. A fast paced notebook café game staffed by corgis." />
+    <meta name="description" content="Run the orange Corgi Cafe in Shoreditch. Humans order, corgis brew and serve. A hand-drawn notebook café game." />
     <meta property="og:title" content="Corgi Café: Loaf Rush" />
-    <meta property="og:description" content="Corgi Café: Loaf Rush. A fast paced notebook café game staffed by corgis." />
+    <meta property="og:description" content="Run the orange Corgi Cafe in Shoreditch. Humans order, corgis brew and serve. A hand-drawn notebook café game." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://lukebala4.github.io/corgi-cafe-loaf-rush/" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="https://lukebala4.github.io/corgi-cafe-loaf-rush/og-image.png?v=london1" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Two hand-drawn corgi baristas behind an orange counter with a latte and a croissant, on lined notebook paper." />
+    <meta property="og:site_name" content="Corgi Café: Loaf Rush" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://lukebala4.github.io/corgi-cafe-loaf-rush/og-image.png?v=london1" />
     <meta name="twitter:title" content="Corgi Café: Loaf Rush" />
-    <meta name="twitter:description" content="Corgi Café: Loaf Rush. A fast paced notebook café game staffed by corgis." />
+    <meta name="twitter:description" content="Run the orange Corgi Cafe in Shoreditch. Humans order, corgis brew and serve. A hand-drawn notebook café game." />
     <title>Corgi Café: Loaf Rush</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M12 26h36v18a12 12 0 0 1-12 12H24a12 12 0 0 1-12-12z' fill='%23fff' stroke='%232b2622' stroke-width='4'/%3E%3Cpath d='M48 30h4a6 6 0 0 1 0 12h-4' fill='none' stroke='%232b2622' stroke-width='4'/%3E%3Cellipse cx='30' cy='26' rx='16' ry='6' fill='%23e39b4f' stroke='%232b2622' stroke-width='3'/%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M11 33 L15 5 L31 22 Z' fill='%23df8d45' stroke='%232b2622' stroke-width='3.5' stroke-linejoin='round'/%3E%3Cpath d='M53 33 L49 5 L33 22 Z' fill='%23df8d45' stroke='%232b2622' stroke-width='3.5' stroke-linejoin='round'/%3E%3Cpath d='M16 25 L17 12 L26 22 Z' fill='%23f4b8a4'/%3E%3Cpath d='M48 25 L47 12 L38 22 Z' fill='%23f4b8a4'/%3E%3Cpath d='M10 38 Q12 20 32 20 Q52 20 54 38 Q52 54 32 58 Q12 54 10 38 Z' fill='%23df8d45' stroke='%232b2622' stroke-width='3.5'/%3E%3Cpath d='M29 22 Q32 20 35 22 L39 40 Q46 46 40 53 Q32 58 24 53 Q18 46 25 40 Z' fill='%23fbf3df'/%3E%3Ccircle cx='22.5' cy='36' r='3' fill='%232b2622'/%3E%3Ccircle cx='41.5' cy='36' r='3' fill='%232b2622'/%3E%3Cellipse cx='32' cy='44' rx='4.6' ry='3.4' fill='%232b2622'/%3E%3Cpath d='M27 49 Q32 53 37 49' fill='none' stroke='%232b2622' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E" />
     <style>
       html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #efe4c8;
         overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
-      #game { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+      #game { position: fixed; inset: 0; }
       #game canvas { touch-action: none; }
       #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
         font: 28px "Patrick Hand", "Comic Sans MS", cursive; color: #2b2622; }
+      #rotate-hint { display: none; position: fixed; left: 50%; top: max(18px, env(safe-area-inset-top)); transform: translateX(-50%) rotate(-1.5deg);
+        padding: 10px 16px; background: #fffaf0; border: 2.5px solid #2b2622; border-radius: 10px; box-shadow: 3px 4px 0 rgba(43,38,34,0.18);
+        font: 20px "Patrick Hand", "Comic Sans MS", cursive; color: #2b2622; white-space: nowrap; pointer-events: none; z-index: 5; }
+      #rotate-hint b { color: #e8702a; font-weight: normal; }
+      @media (orientation: portrait) and (pointer: coarse) { #rotate-hint { display: block; } }
     </style>
   </head>
   <body>
     <div id="loading">warming up the espresso machine…</div>
     <div id="game"></div>
+    <div id="rotate-hint">Turn your phone <b>sideways</b> for a bigger café</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

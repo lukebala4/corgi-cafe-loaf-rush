@@ -1,4 +1,4 @@
-import { ApronId, DecorId, UpgradeId } from "./config";
+import { APRONS, ApronId, DAYS, DECOR, DecorId, UPGRADES, UpgradeId } from "./config";
 import { audio } from "./audio";
 
 export interface Settings {
@@ -43,24 +43,63 @@ function defaults(settings?: Settings): SaveData {
   };
 }
 
+const num = (v: unknown, lo: number, hi: number, dflt: number) =>
+  typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, Math.floor(v))) : dflt;
+
+/**
+ * Load and migrate the save. Older V1 saves (dog-customer era) carry the same ids, so they load as-is;
+ * anything unknown is dropped field by field instead of resetting the whole save. A save that cannot be
+ * parsed at all is copied to a backup key before starting fresh, so progress is never silently destroyed.
+ */
 function load(): SaveData {
+  const base = defaults();
+  let raw: string | null = null;
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return defaults();
-    const d = JSON.parse(raw) as Partial<SaveData>;
-    const base = defaults();
-    return {
-      ...base,
-      ...d,
-      upgrades: { ...base.upgrades, ...(d.upgrades ?? {}) },
-      settings: { ...base.settings, ...(d.settings ?? {}) },
-      aprons: d.aprons?.length ? d.aprons : base.aprons,
-      decor: d.decor ?? [],
-      stars: d.stars ?? [],
-    } as SaveData;
+    raw = localStorage.getItem(KEY);
   } catch {
-    return defaults();
+    return base;
   }
+  if (!raw) return base;
+  let d: Partial<SaveData>;
+  try {
+    d = JSON.parse(raw) as Partial<SaveData>;
+    if (!d || typeof d !== "object") throw new Error("not an object");
+  } catch {
+    try {
+      localStorage.setItem(`${KEY}.backup`, raw);
+    } catch {
+      /* ignore */
+    }
+    console.warn("Corgi Cafe: save data was unreadable; a copy was kept under", `${KEY}.backup`);
+    return base;
+  }
+  const apronIds = new Set<string>(APRONS.map((a) => a.id));
+  const decorIds = new Set<string>(DECOR.map((x) => x.id));
+  const upgrades = { ...base.upgrades };
+  for (const u of UPGRADES) upgrades[u.id] = num(d.upgrades?.[u.id], 0, u.costs.length, 0);
+  const aprons = (Array.isArray(d.aprons) ? d.aprons : []).filter((a): a is ApronId => apronIds.has(a));
+  if (!aprons.includes("classic")) aprons.unshift("classic");
+  const apron = d.apron && aprons.includes(d.apron) ? d.apron : "classic";
+  const st = d.settings ?? ({} as Partial<Settings>);
+  return {
+    v: 1,
+    day: num(d.day, 0, DAYS.length, 0),
+    coins: num(d.coins, 0, 1e7, 0),
+    totalEarned: num(d.totalEarned, 0, 1e8, 0),
+    upgrades,
+    aprons: [...new Set(aprons)],
+    apron,
+    decor: [...new Set((Array.isArray(d.decor) ? d.decor : []).filter((x): x is DecorId => decorIds.has(x)))],
+    stars: (Array.isArray(d.stars) ? d.stars : []).slice(0, DAYS.length).map((x) => num(x, 0, 3, 0)),
+    tutorialDone: d.tutorialDone === true,
+    wins: num(d.wins, 0, 1e6, 0),
+    settings: {
+      music: typeof st.music === "boolean" ? st.music : base.settings.music,
+      sfx: typeof st.sfx === "boolean" ? st.sfx : base.settings.sfx,
+      muted: typeof st.muted === "boolean" ? st.muted : base.settings.muted,
+      reducedMotion: typeof st.reducedMotion === "boolean" ? st.reducedMotion : base.settings.reducedMotion,
+    },
+  };
 }
 
 export const save: { data: SaveData; write(): void; reset(): void; hasProgress(): boolean; applyAudio(): void; newRun(): void } = {
@@ -69,7 +108,7 @@ export const save: { data: SaveData; write(): void; reset(): void; hasProgress()
     try {
       localStorage.setItem(KEY, JSON.stringify(this.data));
     } catch {
-      /* storage may be unavailable (private mode)  -  the game still works */
+      /* storage may be unavailable (private mode); the game still works */
     }
   },
   reset() {

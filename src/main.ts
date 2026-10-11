@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { renderScorecard } from "./share";
 import "@fontsource/patrick-hand";
 import "@fontsource/caveat-brush";
 import { H, W } from "./config";
@@ -44,3 +45,6 @@ async function boot() {
 }
 
 boot();
+
+// Dev-only hook used to render the static social preview image (public/og-image.png).
+if (import.meta.env.DEV) (window as unknown as { __renderScorecard: typeof renderScorecard }).__renderScorecard = renderScorecard;

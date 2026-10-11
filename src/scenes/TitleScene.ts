@@ -3,6 +3,7 @@ import { COLORS as C, DAYS, W } from "../config";
 import { buildTextures, boil, stickerTex } from "../art/textures";
 import { makePaperBg } from "../art/background";
 import { button, scrap, toggle, txt, wobble } from "../ui";
+import { openMenuInfo } from "../share";
 import { audio } from "../audio";
 import { save } from "../save";
 
@@ -39,11 +40,14 @@ export class TitleScene extends Phaser.Scene {
     });
     wordmark.setLetterSpacing(1);
     const sub = this.add.container(640, 212).setAngle(-3);
-    sub.add(boil(this, 0, 0, stickerTex(this, 300, 56, C.coral)));
+    sub.add(boil(this, 0, 0, stickerTex(this, 300, 56, C.orange)));
     sub.add(txt(this, 0, -2, "LOAF RUSH", 44, "#fffaf0", true, { stroke: C.ink, strokeThickness: 4 }));
     wobble(this, sub, 1.5, 1800);
 
-    // --- signature mascot: the giant-eared Corgi Latte, adapted from the supplied sketch
+    // --- Shoreditch cue: a taped-in sketch of the orange double-bay shopfront at 74 Great Eastern Street
+    this.storefront(196, 150);
+
+    // --- signature mascot: the giant-eared corgi asleep in a cup, adapted from the supplied sketch
     // The cup, paws, upright ears and notebook ink are deliberately the visual anchor of the title screen.
     const cx = 340;
     const cy = 470;
@@ -56,7 +60,7 @@ export class TitleScene extends Phaser.Scene {
     corgi.setDepth(0);
     cupFront.setDepth(1);
     // Match the handwritten lettering in the reference drawing without baking text into the texture.
-    const cupName = txt(this, cx, cy + 16, "Corgi Latte", 24, C.ink, false, {
+    const cupName = txt(this, cx, cy + 16, "Corgi Cafe", 26, C.orangeDark, false, {
       stroke: "#fffaf0",
       strokeThickness: 2,
     }).setDepth(2).setAngle(-1);
@@ -100,11 +104,12 @@ export class TitleScene extends Phaser.Scene {
     const playLabel = fresh ? "Play" : finished ? "Play again" : `Continue · Day ${d.day + 1}`;
     const play = button(this, 900, 330, 300, 70, playLabel, C.mint, () => this.play(), playLabel.length > 10 ? 32 : 44);
     this.tweens.add({ targets: play, scale: 1.04, duration: 700, yoyo: true, repeat: -1, ease: "Sine.inOut" });
-    button(this, 820, 412, 150, 46, "Tutorial", "#f6c453", () => this.scene.start("Game", { tutorial: true }), 24);
-    const reset = button(this, 985, 412, 150, 46, "Reset", "#efe5cc", () => {
+    button(this, 775, 412, 120, 46, "Tutorial", "#f6c453", () => this.scene.start("Game", { tutorial: true }), 22);
+    button(this, 900, 412, 120, 46, "Menu", C.orangeSoft, () => openMenuInfo(this), 22);
+    const reset = button(this, 1025, 412, 120, 46, "Reset", "#efe5cc", () => {
       if (!this.confirmReset) {
         this.confirmReset = true;
-        reset.label.setText("Sure? tap");
+        reset.label.setText("Sure?");
         return;
       }
       save.reset();
@@ -121,10 +126,21 @@ export class TitleScene extends Phaser.Scene {
       save.applyAudio();
       mute.label.setText(s.muted ? "×♪" : "♪");
     }, 24);
-    txt(this, 900, 630, "WASD/arrows move · SPACE interact · SHIFT dash · ESC pause", 17, C.inkSoft);
+    txt(this, 900, 630, "WASD/arrows move · SPACE use · SHIFT dash · Q swap · ESC pause", 17, C.inkSoft);
     if (d.wins > 0) txt(this, 900, 655, `Weeks completed: ${d.wins} ★`, 18, C.caramelDark, true);
 
     this.input.keyboard!.once("keydown-ENTER", () => this.play());
+  }
+
+  /** Small notebook sketch of the real shopfront (a drawn cue, not a photo). */
+  private storefront(x: number, y: number) {
+    const c = this.add.container(x, y).setAngle(-4);
+    c.add(scrap(this, 0, 0, 232, 196, 0, false));
+    c.add(boil(this, 0, -4, "title_storefront"));
+    c.add(txt(this, -38, -66, "Corgi Cafe", 17, "#fffaf0", true));
+    c.add(txt(this, 66, -66, "74", 17, "#fffaf0", true));
+    c.add(txt(this, 0, 82, "74 Great Eastern St, Shoreditch", 15, C.inkSoft));
+    wobble(this, c, 0.8, 2400);
   }
 
   private play() {

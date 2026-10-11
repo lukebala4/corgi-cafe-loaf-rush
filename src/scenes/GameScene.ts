@@ -1,8 +1,6 @@
 import Phaser from "phaser";
 import {
   ASSISTANT_HOME,
-  BREEDS,
-  Breed,
   COLORS as C,
   DASH_COOLDOWN,
   DASH_TIME,
@@ -16,13 +14,18 @@ import {
   PASS_Y,
   PATIENCE_MULT,
   PLAYER_START,
+  ROLES,
+  Role,
   SEATS,
   STATION_DEFS,
   STEP,
   TABLES,
   W,
   comboMult,
+  enthusiastPick,
 } from "../config";
+import { ROLE_LOOKS } from "../art/humans";
+import { openMenuInfo } from "../share";
 import { makeCafeBg } from "../art/background";
 import { boil } from "../art/textures";
 import { World, Nav } from "../game/world";
@@ -79,15 +82,17 @@ export class GameScene extends Phaser.Scene {
   paused = false;
   ending = false;
   endT = 0;
+  /** Staff zoomies lap: around the communal tables, clear of the window bar and the column. */
   zoomLoop = [
     { x: 160, y: 300 },
-    { x: 640, y: 290 },
-    { x: 1150, y: 300 },
-    { x: 1160, y: 480 },
-    { x: 1150, y: 665 },
-    { x: 640, y: 670 },
-    { x: 160, y: 665 },
-    { x: 150, y: 480 },
+    { x: 640, y: 300 },
+    { x: 1140, y: 300 },
+    { x: 1140, y: 480 },
+    { x: 900, y: 480 },
+    { x: 900, y: 662 },
+    { x: 400, y: 668 },
+    { x: 160, y: 660 },
+    { x: 160, y: 480 },
   ];
   // HUD
   private hud!: {
@@ -135,9 +140,6 @@ export class GameScene extends Phaser.Scene {
   get menu(): ItemId[] {
     return this.def.menu;
   }
-  get fancyAllowed() {
-    return this.def.breeds.includes("poodle");
-  }
   get patienceFrozen() {
     return this.tutorialMode;
   }
@@ -151,17 +153,18 @@ export class GameScene extends Phaser.Scene {
     this.world = new World();
     this.nav = new Nav(this.world);
 
-    // furniture
-    for (const t of TABLES) boil(this, t.x, t.y, "table").setDepth(t.y + 20);
+    // furniture: pale communal tables with thin dark legs, brown chairs at each seat
+    for (const t of TABLES) boil(this, t.x, t.y, `table_${t.w}`).setDepth(t.y + 20);
+    for (const st of SEATS) boil(this, st.x, st.y + 8, "chair").setOrigin(0.5, 1).setScale(0.82).setDepth(st.y - 2).setFlipX(st.side > 0);
     // decorations
     const d = save.data.decor;
     if (d.includes("lights")) boil(this, 650, 152, "deco_lights").setOrigin(0.5, 0).setScale(1.08, 0.8).setDepth(3);
-    if (d.includes("bunting")) boil(this, 650, 264, "deco_bunting").setOrigin(0.5, 0).setScale(1.08, 0.7).setDepth(4);
+    if (d.includes("bunting")) boil(this, 650, 266, "deco_bunting").setOrigin(0.5, 0).setScale(1.08, 0.7).setDepth(4);
     if (d.includes("plant")) {
-      boil(this, 1160, 700, "deco_plant").setOrigin(0.5, 1).setScale(0.75).setDepth(700);
-      boil(this, 132, 700, "deco_plant").setOrigin(0.5, 1).setScale(0.6).setDepth(700).setFlipX(true);
+      boil(this, 1162, 700, "deco_plant").setOrigin(0.5, 1).setScale(0.62).setDepth(700);
+      boil(this, 128, 700, "deco_plant").setOrigin(0.5, 1).setScale(0.55).setDepth(700).setFlipX(true);
     }
-    if (d.includes("portrait")) boil(this, 46, 470, "deco_portrait").setScale(0.7).setDepth(2);
+    if (d.includes("portrait")) boil(this, 930, 664, "deco_portrait").setScale(0.5).setDepth(2);
 
     // stations
     for (const sd of STATION_DEFS) {
@@ -302,7 +305,23 @@ export class GameScene extends Phaser.Scene {
       }
     }
     const w = this.promptT.width + 22;
-    this.prompt.setPosition(Phaser.Math.Clamp(t.x, 110 + w / 2, 1190 - w / 2), t.y);
+    const clampX = (x: number) => Phaser.Math.Clamp(x, 110 + w / 2, 1190 - w / 2);
+    let px = clampX(t.x);
+    // Keep the bubble beside the barista, never on top of its head or body.
+    const p = this.player;
+    const bodyHalf = 72;
+    const overlapsPlayer = (x: number) => Math.abs(x - p.x) < w / 2 + bodyHalf && t.y > p.y - 110 && t.y < p.y + 20;
+    if (overlapsPlayer(px)) {
+      const pref = t.x >= p.x ? 1 : -1;
+      for (const side of [pref, -pref]) {
+        const cand = clampX(p.x + side * (bodyHalf + w / 2 + 6));
+        if (!overlapsPlayer(cand)) {
+          px = cand;
+          break;
+        }
+      }
+    }
+    this.prompt.setPosition(px, t.y);
   }
 
   // =================================================================== intro / banners
@@ -352,9 +371,10 @@ export class GameScene extends Phaser.Scene {
     const t = txt(this, W / 2, H / 2 - 200, "Paused", 60, C.caramel, true, { stroke: C.ink, strokeThickness: 3 });
     const sub = txt(this, W / 2, H / 2 - 152, "the loaves will wait. (they won't, but time is frozen)", 18, C.inkSoft);
     const resume = button(this, W / 2, H / 2 - 92, 260, 54, "Resume", C.mint, () => this.pause(false), 30);
-    const restart = button(this, W / 2, H / 2 - 26, 260, 50, this.tutorialMode ? "Restart tutorial" : "Restart day", "#f6c453", () => {
+    const restart = button(this, W / 2 - 98, H / 2 - 26, 186, 50, this.tutorialMode ? "Restart tutorial" : "Restart day", "#f6c453", () => {
       this.scene.restart({ day: this.dayIdx, tutorial: this.tutorialMode });
-    }, 26);
+    }, this.tutorialMode ? 20 : 24);
+    const menuB = button(this, W / 2 + 98, H / 2 - 26, 186, 50, "London menu", C.orangeSoft, () => openMenuInfo(this), 24);
     const s = save.data.settings;
     const music = toggle(this, W / 2, H / 2 + 34, "Music", () => s.music, (v) => ((s.music = v), save.write(), save.applyAudio()));
     const sfx = toggle(this, W / 2, H / 2 + 84, "Sound effects", () => s.sfx, (v) => ((s.sfx = v), save.write(), save.applyAudio()));
@@ -363,9 +383,10 @@ export class GameScene extends Phaser.Scene {
       audio.music("title");
       this.scene.start("Title");
     }, 22);
-    L.add([t, sub, resume, restart, music, sfx, rm, quit]);
+    const keys = txt(this, W / 2, H / 2 + 232, this.controls.touchMode ? "drag to walk · PAW use · ZOOM dash · SWAP paws" : "WASD move · SPACE use · SHIFT dash · Q swap paws · ESC pause", 16, C.inkSoft);
+    L.add([t, sub, resume, restart, menuB, music, sfx, rm, quit, keys]);
     // keep pause menu tweens alive while gameplay tweens are paused
-    for (const o of [resume, restart, music, sfx, rm, quit]) {
+    for (const o of [resume, restart, menuB, music, sfx, rm, quit]) {
       o.on("pointerover", () => this.tweens.resumeAll());
     }
     this.pauseLayer = L;
@@ -389,6 +410,7 @@ export class GameScene extends Phaser.Scene {
     }
     // presentation
     this.player.sync();
+    this.controls.setSwapAvailable(this.player.items.length > 1);
     const held = new Set(this.player.items);
     for (const c of this.customers) c.setHighlight(held);
     const t = this.ending ? null : this.findTarget();
@@ -419,6 +441,7 @@ export class GameScene extends Phaser.Scene {
     this.director.update(dt, this.dayT, this.dayT < DAY_LENGTH - 15);
     this.movePlayer(dt);
 
+    if (this.controls.takeSwap()) this.swapPaws();
     if (this.controls.takeInteract()) {
       const t = this.findTarget();
       if (t?.ok && t.run) {
@@ -480,7 +503,7 @@ export class GameScene extends Phaser.Scene {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     this.world.resolve(p, p.r);
-    // anti-trap: if squeezed inside something (e.g. a growing dachshund), pop to the nearest free spot
+    // anti-trap: if squeezed inside something (e.g. the visiting group or a napping corgi), pop to the nearest free spot
     if (this.world.overlaps(p, p.r)) {
       p.stuckT += dt;
       if (p.stuckT > 0.35) {
@@ -513,7 +536,7 @@ export class GameScene extends Phaser.Scene {
       if (d > 78) continue;
       const a = c.anchor;
       const px = a.x;
-      const py = c.kind === "bigloaf" ? a.y + 30 : a.y + 34;
+      const py = c.kind === "group" ? a.y + 30 : a.y + 34;
       let match = -1;
       for (let i = held.length - 1; i >= 0; i--)
         if (c.needs(held[i]) >= 0) {
@@ -546,7 +569,19 @@ export class GameScene extends Phaser.Scene {
     }
     if (!cands.length) return null;
     cands.sort((a, b) => (a.ok === b.ok ? a.score - b.score : a.ok ? -1 : 1));
-    return cands[0];
+    const best = cands[0];
+    // two items carried: say which one is in the active (front) paw, and how to switch
+    if (held.length > 1 && best.ok) return { ...best, label: `${best.label}   (${this.controls.swapLabel}: swap paws)` };
+    return best;
+  }
+
+  /** Rotate which carried item is in the front paw (used first by stations and the pass). */
+  swapPaws() {
+    const p = this.player;
+    if (p.items.length < 2) return;
+    p.swap(this);
+    audio.play("pick");
+    floatText(this, p.x, p.y - 118, `front paw: ${ITEM_INFO[p.items[p.items.length - 1]].name}`, C.inkSoft, 18, 24);
   }
 
   giveItem(it: ItemId, silent = false) {
@@ -587,6 +622,9 @@ export class GameScene extends Phaser.Scene {
     const complete = c.deliver(idx);
     if (byAssistant) floatText(this, c.x, c.y - 120, "Biscuit delivered!", C.mintDark, 18, 30);
     if (!complete) return;
+    // success beat: ear perk + butt wiggle on the corgi who served it
+    if (byAssistant) this.assistant?.rig.celebrate();
+    else this.player.rig.celebrate();
     const base = c.order.reduce((s, o) => s + ITEM_INFO[o].price, 0);
     const tip = base * 0.6 * c.patienceFrac;
     const mult = comboMult(this.combo);
@@ -596,9 +634,9 @@ export class GameScene extends Phaser.Scene {
     this.stats.bestCombo = Math.max(this.stats.bestCombo, this.combo);
     this.stats.served++;
     this.stats.tips += Math.max(0, tipPart);
-    this.addCoins(total, c.anchor.x, c.anchor.y - (c.kind === "bigloaf" ? 200 : 110), false);
+    this.addCoins(total, c.anchor.x, c.anchor.y - (c.kind === "group" ? 200 : 110), false);
     audio.play("coin");
-    burst(this, c.anchor.x, c.anchor.y - 80, ["heart", "star", "star_mint"], c.kind === "bigloaf" ? 14 : 6);
+    burst(this, c.anchor.x, c.anchor.y - 80, ["heart", "star", "star_mint"], c.kind === "group" ? 14 : 6);
     if (this.combo >= 2) {
       audio.play("combo", this.combo);
       if (this.combo % 3 === 0 || this.combo === 2) {
@@ -632,7 +670,7 @@ export class GameScene extends Phaser.Scene {
     c.wrong(it);
     audio.play("wrong");
     this.stats.mistakes++;
-    if (c.breed !== "retriever") {
+    if (!c.forgiving) {
       if (this.combo >= 2) this.floatAt(this.player.x, this.player.y - 130, "combo dropped!", C.coral);
       this.combo = 0;
     }
@@ -646,15 +684,18 @@ export class GameScene extends Phaser.Scene {
     shake(this, 140, 0.003);
   }
 
-  influencerPhoto(c: Customer) {
+  /** A content creator photographs the corgi barista: a flash on the corgi, a polaroid, a small bonus. */
+  creatorPhoto(c: Customer) {
     audio.play("camera");
+    const p = this.player;
     const cam = boil(this, c.x + 30, c.y - 70, "camera").setDepth(4900);
-    const fl = this.add.image(c.x + 30, c.y - 70, "flash", 0).setDepth(4901).setScale(0.3);
+    const fl = this.add.image(p.x, p.y - 40, "flash", 0).setDepth(4901).setScale(0.3);
     this.tweens.add({ targets: fl, scale: 2.2, alpha: 0, duration: 380, onComplete: () => fl.destroy() });
     this.tweens.add({ targets: cam, alpha: 0, delay: 900, duration: 300, onComplete: () => cam.destroy() });
+    p.rig.celebrate(0.7);
     const bonus = 6 + Math.round(this.combo * 1.5);
     this.addCoins(bonus, c.x, c.y - 160);
-    floatText(this, c.x, c.y - 196, `#loafgoals · +${bonus} likes`, C.coral, 18, 30);
+    floatText(this, c.x, c.y - 196, `#corgibarista · +${bonus} likes`, C.coral, 18, 30);
   }
 
   pupContact(x: number, y: number) {
@@ -687,6 +728,7 @@ export class GameScene extends Phaser.Scene {
 
   private pickOrderItem(exclude: ItemId[] = []): ItemId {
     const menu = this.def.menu.filter((m) => !exclude.includes(m));
+    if (!menu.length) return this.def.menu[0];
     const prev = this.dayIdx > 0 ? DAYS[this.dayIdx - 1].menu : [];
     const weights = menu.map((m) => (prev.includes(m) ? 1 : 2.4));
     let r = Math.random() * weights.reduce((a, b) => a + b, 0);
@@ -697,55 +739,64 @@ export class GameScene extends Phaser.Scene {
     return menu[0];
   }
 
-  private makeOrder(breed: Breed): ItemId[] {
-    if (breed === "bigloaf") {
+  private makeOrder(role: Role): ItemId[] {
+    if (role === "group") {
       const n = this.dayIdx >= 5 ? 4 : 3;
-      return Array.from({ length: n }, () => this.pickOrderItem());
+      const out: ItemId[] = [];
+      for (let i = 0; i < n; i++) out.push(this.pickOrderItem(out.length < this.def.menu.length - 1 ? out : []));
+      return out;
     }
-    const first: ItemId = breed === "poodle" ? "fancy" : this.pickOrderItem();
+    const first: ItemId = role === "enthusiast" ? enthusiastPick(this.def.menu) : this.pickOrderItem();
     const order: ItemId[] = [first];
     if (Math.random() < this.def.comboChance) order.push(this.pickOrderItem([first]));
-    if (this.dayIdx >= 5 && breed !== "poodle" && Math.random() < 0.12) order.push(this.pickOrderItem(order));
+    if (this.dayIdx >= 5 && role !== "enthusiast" && Math.random() < 0.12) order.push(this.pickOrderItem(order));
     return order;
   }
 
-  private patienceFor(breed: Breed, order: ItemId[]) {
+  private patienceFor(role: Role, order: ItemId[]) {
     const lvl = save.data.upgrades.patience;
-    const extra = order.reduce((s, o) => s + (o === "fancy" ? 0.5 : o === "latte" || o === "iced" ? 0.15 : 0), 0);
-    return this.def.patience * BREEDS[breed].patience * PATIENCE_MULT[lvl] * (1 + 0.55 * (order.length - 1) + extra);
+    const extra = order.reduce(
+      (s, o) => s + (o === "pally" ? 0.4 : o === "sourdough" ? 0.25 : o === "latte" || o === "icedlatte" ? 0.15 : o === "juicebox" ? 0.1 : 0),
+      0,
+    );
+    return this.def.patience * ROLES[role].patience * PATIENCE_MULT[lvl] * (1 + 0.55 * (order.length - 1) + extra);
+  }
+
+  /** Pick an outfit for a role that is not already in the room, so two identical people never sit side by side. */
+  private freshLook(role: Role): string | undefined {
+    const used = new Set(this.customers.flatMap((c) => c.members.map((m) => m.look)));
+    const opts = ROLE_LOOKS[role].filter((l) => !used.has(l));
+    return opts.length ? Phaser.Utils.Array.GetRandom(opts) : undefined;
   }
 
   private trySpawn(): boolean {
-    const active = this.customers.filter((c) => c.state !== "leave" && c.state !== "gone" && c.kind !== "bigloaf").length;
+    const active = this.customers.filter((c) => c.state !== "leave" && c.state !== "gone" && c.kind !== "group").length;
     if (active >= this.def.maxCustomers) return false;
-    const pool = this.def.breeds.filter((b) => {
-      if (b === "dachshund") return !this.customers.some((c) => c.kind === "dachs");
+    const pool = this.def.roles.filter((r) => {
+      if (r === "group") return false;
+      // one content creator at a time is plenty
+      if (r === "creator") return !this.customers.some((c) => c.role === "creator" && c.state !== "gone");
       return true;
     });
-    let breed = Phaser.Utils.Array.GetRandom(pool) as Breed;
-    if (breed === "dachshund" && Math.random() < 0.5) breed = "beagle"; // dachshunds are a treat, not every time
-    if (breed !== "dachshund") {
-      const seats = this.freeSeats();
-      if (!seats.length) return false;
-      const seat = Phaser.Utils.Array.GetRandom(seats);
-      const order = this.makeOrder(breed);
-      this.customers.push(new Customer(this, breed, order, seat, this.patienceFor(breed, order)));
-    } else {
-      const order = this.makeOrder(breed);
-      this.customers.push(new Customer(this, breed, order, -1, this.patienceFor(breed, order)));
-    }
+    const role = Phaser.Utils.Array.GetRandom(pool) as Role;
+    const seats = this.freeSeats();
+    if (!seats.length) return false;
+    const seat = Phaser.Utils.Array.GetRandom(seats);
+    const order = this.makeOrder(role);
+    this.customers.push(new Customer(this, role, order, seat, this.patienceFor(role, order), this.freshLook(role)));
     return true;
   }
 
-  spawnBigLoaf(): boolean {
-    if (this.customers.some((c) => c.kind === "bigloaf")) return false;
-    const order = this.makeOrder("bigloaf");
-    this.customers.push(new Customer(this, "bigloaf", order, -1, this.patienceFor("bigloaf", order)));
+  /** The visiting group: three humans at the window bar with one shared order. */
+  spawnGroup(): boolean {
+    if (this.customers.some((c) => c.kind === "group")) return false;
+    const order = this.makeOrder("group");
+    this.customers.push(new Customer(this, "group", order, -1, this.patienceFor("group", order)));
     return true;
   }
 
-  spawnScripted(breed: Breed, order: ItemId[], seat: number) {
-    this.customers.push(new Customer(this, breed, order, seat, 999));
+  spawnScripted(role: Role, order: ItemId[], seat: number) {
+    this.customers.push(new Customer(this, role, order, seat, 999, this.freshLook(role)));
   }
 
   // =================================================================== day end
@@ -755,7 +806,7 @@ export class GameScene extends Phaser.Scene {
     this.endT = 0;
     this.banner("Closing time!", "Flip the sign. Count the coins. Pet a loaf.", C.mint, 2200);
     audio.play("win");
-    for (const c of this.customers) if (c.state === "wait" || c.state === "zoom" || c.state === "return" || c.state === "enter") c.leave(false);
+    for (const c of this.customers) if (c.state === "wait" || c.state === "enter") c.leave(false);
     this.director.forceEnd();
     this.assistant?.reset();
     for (const s of this.stations) s.clear();

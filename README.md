@@ -50,6 +50,13 @@ Small touches inspired by 2000s and 2010s casual games, kept kind: no login stre
 
 Progress saves in the browser. Audio starts after your first tap or key press. Results and the final screen can make a shareable scorecard image (Share, Download PNG, Copy link); nothing is posted unless you choose to.
 
+### On a phone
+
+Hold the phone sideways. The café always fits the screen and re-fits straight after you rotate; pinches and quick double taps no longer zoom the page.
+
+- **Android:** the first Play tap switches to full screen (the title also has a Full screen / Windowed button). This hides the browser bars, so the café stays one size.
+- **iPhone:** Safari can't hide its bars, so the café shrinks slightly when they appear. For a steady full-screen café, tap Share, then Add to Home Screen, and open it from the icon. The home-screen version keeps its own save, separate from Safari.
+
 ## Development
 
 ```bash

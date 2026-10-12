@@ -107,15 +107,17 @@ export function renderScorecard(scene: Phaser.Scene, card: ScoreCard): Promise<B
 
 const CSS = `
 .cc-ov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(43,38,34,.55);
-  font-family:"Patrick Hand","Comic Sans MS",cursive;color:#2b2622;touch-action:auto;-webkit-user-select:text;user-select:text}
+  font-family:"Patrick Hand","Comic Sans MS",cursive;color:#2b2622;touch-action:pan-x pan-y;-webkit-user-select:text;user-select:text}
 .cc-box{position:relative;background:#fbf3df;border:3px solid #2b2622;border-radius:14px;box-shadow:6px 8px 0 rgba(43,38,34,.25);
-  width:min(94vw,760px);max-height:92vh;display:flex;flex-direction:column;transform:rotate(-.5deg)}
+  width:min(94vw,760px);max-height:92vh;max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain;
+  display:flex;flex-direction:column;transform:rotate(-.5deg)}
 .cc-box h2{margin:14px 18px 4px;font-size:30px;font-weight:normal;color:#c9561a}
 .cc-box p{margin:2px 18px 8px;font-size:18px;color:#5a514a}
-.cc-img{display:block;width:calc(100% - 36px);margin:6px 18px;border:2px solid #2b2622;border-radius:6px;background:#fff}
+.cc-img{display:block;width:auto;max-width:calc(100% - 36px);max-height:56vh;max-height:56dvh;margin:6px auto;align-self:center;
+  object-fit:contain;flex:none;border:2px solid #2b2622;border-radius:6px;background:#fff}
 .cc-row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:10px 14px 16px}
 .cc-btn{font:inherit;font-size:22px;padding:8px 18px;border:3px solid #2b2622;border-radius:999px;cursor:pointer;background:#fffaf0;color:#2b2622;
-  box-shadow:2px 3px 0 rgba(43,38,34,.25)}
+  box-shadow:2px 3px 0 rgba(43,38,34,.25);touch-action:manipulation}
 .cc-btn:focus-visible{outline:3px dashed #f0702a;outline-offset:3px}
 .cc-btn.orange{background:#f0702a;color:#fffaf0}
 .cc-btn.mint{background:#7fcfb0}
@@ -140,6 +142,16 @@ const CSS = `
 .cc-cat.small{font-size:18px;margin-top:8px}
 .cc-src{margin:10px 0 0!important;font-size:15px!important}
 .cc-url{width:100%;font:inherit;font-size:16px;padding:4px 6px;border:2px solid #2b2622;border-radius:6px;background:#fff}
+/* phones held sideways: tighter header, smaller card, so the buttons stay on screen */
+@media (max-height:520px){
+  .cc-box h2{margin:8px 44px 0 16px;font-size:23px}
+  .cc-box p{margin:0 16px 4px;font-size:15px}
+  .cc-img{max-height:50vh;max-height:50dvh;margin:4px auto}
+  .cc-row{padding:4px 12px 8px;gap:8px}
+  .cc-btn{font-size:19px;padding:5px 14px}
+  .cc-status{min-height:18px;font-size:16px;margin:0 0 2px}
+  .cc-x{top:4px}
+}
 `;
 
 let cssDone = false;
@@ -215,6 +227,8 @@ async function copyText(s: string): Promise<boolean> {
     try {
       const ta = el("textarea");
       ta.value = s;
+      ta.readOnly = true;
+      ta.style.fontSize = "16px"; // smaller text makes iPhone Safari zoom in on focus
       ta.style.position = "fixed";
       ta.style.opacity = "0";
       document.body.appendChild(ta);

@@ -8,6 +8,7 @@ import { audio } from "../audio";
 import { save } from "../save";
 import { bookProgress } from "../meta";
 import { bookOpen, openBook } from "../book";
+import { autoFullscreen, canFullscreen, isFullscreen, isIOS, isStandalone, isTouch, toggleFullscreen } from "../viewport";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -130,6 +131,7 @@ export class TitleScene extends Phaser.Scene {
         return;
       }
       audio.unlock();
+      autoFullscreen();
       this.scene.start("Game", { endless: true });
     }, unlocked ? 22 : 20);
     void endless;
@@ -143,6 +145,15 @@ export class TitleScene extends Phaser.Scene {
       save.applyAudio();
       mute.label.setText(s.muted ? "×♪" : "♪");
     }, 24);
+    // phones: a full screen switch where the browser has one, otherwise the home-screen tip on iPhone
+    if (canFullscreen() && isTouch()) {
+      const fs = button(this, W - 180, 40, 150, 40, isFullscreen() ? "Windowed" : "Full screen", "#fffaf0", () => void toggleFullscreen(), 20);
+      const sync = () => fs.label.setText(isFullscreen() ? "Windowed" : "Full screen");
+      document.addEventListener("fullscreenchange", sync);
+      this.events.once("shutdown", () => document.removeEventListener("fullscreenchange", sync));
+    } else if (isIOS() && !isStandalone()) {
+      txt(this, 345, 688, "iPhone tip: Share, then Add to Home Screen, for a steady full-screen café", 19, C.inkSoft).setAngle(-1);
+    }
     txt(this, 900, 650, "WASD/arrows move · SPACE use · SHIFT dash · Q swap · ESC pause", 17, C.inkSoft);
     if (d.wins > 0) txt(this, 900, 670, `Weeks completed: ${d.wins} ★`, 17, C.caramelDark, true);
 
@@ -164,6 +175,7 @@ export class TitleScene extends Phaser.Scene {
 
   private play() {
     audio.unlock();
+    autoFullscreen();
     const d = save.data;
     if (d.day >= DAYS.length) {
       save.newRun();

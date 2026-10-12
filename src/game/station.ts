@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BLEND_TIME, BREW_TIME, COLORS as C, ITEM_INFO, ItemId, STATION_BASE_Y, StationId } from "../config";
+import { BLEND_TIME, BREW_TIME, COLORS as C, DAYS, ITEM_INFO, ItemId, STATION_BASE_Y, StationId } from "../config";
 import { boil } from "../art/textures";
 import { puff, txt } from "../ui";
 import { audio } from "../audio";
@@ -61,7 +61,11 @@ export class Station {
   busySprite?: Phaser.GameObjects.Sprite;
   steamT = 0;
 
-  constructor(g: GameScene, id: StationId, x: number, locked: boolean, padY?: number) {
+  /** Prompt shown when walking up to a locked station. */
+  private lockLabel = "Locked";
+
+  /** `opens` is the index of the day this station unlocks (-1 if unknown). */
+  constructor(g: GameScene, id: StationId, x: number, locked: boolean, padY?: number, opens = -1) {
     this.g = g;
     this.id = id;
     this.x = x;
@@ -83,10 +87,14 @@ export class Station {
     this.progress = g.add.graphics().setDepth(4500);
     this.locked = locked;
     if (locked) {
+      // a locked station, not an unfinished feature: padlock + the day it opens
+      const day = opens >= 0 ? DAYS[opens].name : "";
       const n = g.add.container(x, 92).setDepth(12).setAngle(Phaser.Math.Between(-6, 6));
       n.add(g.add.image(0, 0, "soon", 0));
-      n.add(txt(g, 0, -8, "coming", 18, C.inkSoft, true));
-      n.add(txt(g, 0, 12, "soon!", 20, C.orangeDark, true));
+      n.add(g.add.image(-27, -10, "padlock", 0).setScale(0.82));
+      n.add(txt(g, 9, -10, "Locked", 20, C.ink, true));
+      n.add(txt(g, 0, 13, day ? `opens ${day.slice(0, 3)}` : "not today", 18, C.orangeDark, true));
+      this.lockLabel = day ? `Locked: opens ${day}` : "Locked today";
       this.lockNote = n;
       this.sprite.setAlpha(0.35);
     }
@@ -147,7 +155,7 @@ export class Station {
 
   /** What would happen if the player interacted now? Uses the item in the corgi's paw first (top slot). */
   action(held: ItemId[], capacity: number): Action | null {
-    if (this.locked) return { label: "coming soon!", ok: false };
+    if (this.locked) return { label: this.lockLabel, ok: false };
     const free = held.length < capacity;
     const g = this.g;
     const take = (verb: string): Action =>

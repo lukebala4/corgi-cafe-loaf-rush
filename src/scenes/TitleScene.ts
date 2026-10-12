@@ -63,13 +63,15 @@ export class TitleScene extends Phaser.Scene {
     const cupFront = boil(this, cx, cy, "title_cup_front").setScale(heroScale);
     void cupBack;
     void cupFront;
-    corgi.setDepth(0);
+    // paper and cup back sit at 0, the tag at 0.1, the corgi at 0.2 and the cup front at 1
+    corgi.setDepth(0.2);
     cupFront.setDepth(1);
-    // the "Corgi / Cafe" lettering and heart are drawn into the cup art itself (title_cup_front)
+    // the "Corgi / Cafe" lettering and heart are drawn into the cup art itself (title_cup_front).
+    // The tag sits just behind the corgi, so a yip bounce pops him in front of it.
     const mascotTag = txt(this, mx, cy - 168, "our signature loaf", 18, C.inkSoft, false, {
       backgroundColor: "#fffaf0",
       padding: { x: 8, y: 3 },
-    }).setDepth(3).setAngle(-4);
+    }).setDepth(0.1).setAngle(-4);
     const restY = corgi.y;
     let popTween: Phaser.Tweens.Tween | undefined;
     const hero = this.add.container(0, 0).setDepth(3).setSize(340, 300).setInteractive({ useHandCursor: true });

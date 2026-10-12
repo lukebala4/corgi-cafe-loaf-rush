@@ -24,6 +24,7 @@ import {
   W,
   comboMult,
   enthusiastPick,
+  opensOn,
 } from "../config";
 import { ROLE_LOOKS } from "../art/humans";
 import { Crowd } from "../game/crowd";
@@ -285,7 +286,7 @@ export class GameScene extends Phaser.Scene {
       const isPad = sd.id === "padA" || sd.id === "padB";
       const locked = !this.tutorialMode && sd.unlock !== null && !this.def.menu.includes(sd.unlock);
       const lockedT = this.tutorialMode && sd.unlock !== null;
-      const s = new Station(this, sd.id, sd.x, locked || lockedT, isPad ? PASS_Y + 11 : undefined);
+      const s = new Station(this, sd.id, sd.x, locked || lockedT, isPad ? PASS_Y + 11 : undefined, sd.unlock ? opensOn(sd.unlock) : -1);
       this.stations.push(s);
       if (isPad) this.pads.push(s);
     }

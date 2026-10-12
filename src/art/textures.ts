@@ -170,6 +170,22 @@ export function buildTextures(scene: Phaser.Scene) {
       { fill: "#fff2a8", w: 2.2 },
     );
   });
+  // padlock for stations that open later in the week
+  doodle(scene, "padlock", 26, 30, (p) => {
+    p.curve(
+      [
+        [7.5, 14],
+        [7.5, 6],
+        [13, 3],
+        [18.5, 6],
+        [18.5, 14],
+      ],
+      { w: 2.6 },
+    );
+    p.rrect(3, 13, 20, 14, 3, { fill: "#f0a35e", w: 2.4 });
+    p.dot(13, 19.5, 2);
+    p.seg(13, 20, 13, 23.5, { w: 2 });
+  });
 
   // furniture: pale rectangular communal tables with thin dark legs
   for (const w of [200, 280]) doodle(scene, `table_${w}`, w + 20, 88, (p) => tableDraw(p, w));

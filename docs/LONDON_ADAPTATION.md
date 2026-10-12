@@ -87,7 +87,7 @@ Game coins are a separate fictional balance and are never presented as prices. R
 | Sat | Pally Pick-Me-Up, The Juicebox | All four events in one shift |
 | Sun | Everything (Sunday Brunch finale) | Five events including two zoomies |
 
-Orders only use items unlocked that day, and stations for locked items show a "coming soon" note.
+Orders only use items unlocked that day, and stations for locked items show a padlock note saying "Locked" and the day they open (for example "opens Tue").
 
 ## 5. Characters and roles
 

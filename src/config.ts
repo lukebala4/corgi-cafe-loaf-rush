@@ -509,5 +509,6 @@ export const DAY_EVENTS = [
   "run club + brunch",
 ];
 export const DECOR_TIP_BONUS = 0.05;
-
 export const comboMult = (combo: number) => 1 + Math.min(combo, 8) * 0.25;
+/** Index of the first day whose menu has this item (-1 if it never appears). */
+export const opensOn = (item: ItemId) => DAYS.findIndex((d) => d.menu.includes(item));

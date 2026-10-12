@@ -2,10 +2,12 @@ import Phaser from "phaser";
 import { COLORS as C, DAYS, W } from "../config";
 import { buildTextures, boil, stickerTex } from "../art/textures";
 import { makePaperBg } from "../art/background";
-import { button, scrap, toggle, txt, wobble } from "../ui";
+import { button, floatText, scrap, toggle, txt, wobble } from "../ui";
 import { openMenuInfo } from "../share";
 import { audio } from "../audio";
 import { save } from "../save";
+import { bookProgress } from "../meta";
+import { bookOpen, openBook } from "../book";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -98,7 +100,7 @@ export class TitleScene extends Phaser.Scene {
     txt(this, cx - 10, cy + 150, "shh… the barista is loafing", 20, C.inkSoft).setAngle(-2);
 
     // --- menu scrap
-    const panel = scrap(this, 900, 470, 420, 400, 1.5, true);
+    const panel = scrap(this, 900, 474, 420, 420, 1.5, true);
     void panel;
     const d = save.data;
     const fresh = !save.hasProgress();
@@ -106,9 +108,9 @@ export class TitleScene extends Phaser.Scene {
     const playLabel = fresh ? "Play" : finished ? "Play again" : `Continue · Day ${d.day + 1}`;
     const play = button(this, 900, 330, 300, 70, playLabel, C.mint, () => this.play(), playLabel.length > 10 ? 32 : 44);
     this.tweens.add({ targets: play, scale: 1.04, duration: 700, yoyo: true, repeat: -1, ease: "Sine.inOut" });
-    button(this, 775, 412, 120, 46, "Tutorial", "#f6c453", () => this.scene.start("Game", { tutorial: true }), 22);
-    button(this, 900, 412, 120, 46, "Menu", C.orangeSoft, () => openMenuInfo(this), 22);
-    const reset = button(this, 1025, 412, 120, 46, "Reset", "#efe5cc", () => {
+    button(this, 775, 408, 120, 46, "Tutorial", "#f6c453", () => this.scene.start("Game", { tutorial: true }), 22);
+    button(this, 900, 408, 120, 46, "Menu", C.orangeSoft, () => openMenuInfo(this), 22);
+    const reset = button(this, 1025, 408, 120, 46, "Reset", "#efe5cc", () => {
       if (!this.confirmReset) {
         this.confirmReset = true;
         reset.label.setText("Sure?");
@@ -118,20 +120,35 @@ export class TitleScene extends Phaser.Scene {
       this.scene.restart();
     }, 22);
     if (fresh) reset.setEnabled(false);
+    // the sticker book, and Endless Brunch once a full week has been survived
+    const bp = bookProgress();
+    button(this, 800, 462, 190, 46, `Stickers ${bp.seen}/${bp.total}`, "#fffaf0", () => openBook(this), 22);
+    const unlocked = d.wins > 0;
+    const endless = button(this, 1000, 462, 190, 46, unlocked ? "Endless Brunch" : "Endless: locked", unlocked ? C.coral : "#efe5cc", () => {
+      if (!unlocked) {
+        floatText(this, 1000, 430, "Survive Sunday Brunch to unlock", C.coral, 20, 24);
+        return;
+      }
+      audio.unlock();
+      this.scene.start("Game", { endless: true });
+    }, unlocked ? 22 : 20);
+    void endless;
     const s = save.data.settings;
-    toggle(this, 900, 472, "Music", () => s.music, (v) => ((s.music = v), save.write(), save.applyAudio()), 280);
-    toggle(this, 900, 522, "Sound effects", () => s.sfx, (v) => ((s.sfx = v), save.write(), save.applyAudio()), 280);
-    toggle(this, 900, 572, "Reduced motion", () => s.reducedMotion, (v) => ((s.reducedMotion = v), save.write()), 280);
+    toggle(this, 900, 520, "Music", () => s.music, (v) => ((s.music = v), save.write(), save.applyAudio()), 280);
+    toggle(this, 900, 566, "Sound effects", () => s.sfx, (v) => ((s.sfx = v), save.write(), save.applyAudio()), 280);
+    toggle(this, 900, 612, "Reduced motion", () => s.reducedMotion, (v) => ((s.reducedMotion = v), save.write()), 280);
     const mute = button(this, W - 60, 40, 60, 40, s.muted ? "×♪" : "♪", "#fffaf0", () => {
       s.muted = !s.muted;
       save.write();
       save.applyAudio();
       mute.label.setText(s.muted ? "×♪" : "♪");
     }, 24);
-    txt(this, 900, 630, "WASD/arrows move · SPACE use · SHIFT dash · Q swap · ESC pause", 17, C.inkSoft);
-    if (d.wins > 0) txt(this, 900, 655, `Weeks completed: ${d.wins} ★`, 18, C.caramelDark, true);
+    txt(this, 900, 650, "WASD/arrows move · SPACE use · SHIFT dash · Q swap · ESC pause", 17, C.inkSoft);
+    if (d.wins > 0) txt(this, 900, 670, `Weeks completed: ${d.wins} ★`, 17, C.caramelDark, true);
 
-    this.input.keyboard!.once("keydown-ENTER", () => this.play());
+    this.input.keyboard!.on("keydown-ENTER", () => {
+      if (!bookOpen(this)) this.play();
+    });
   }
 
   /** Small notebook sketch of the real shopfront (a drawn cue, not a photo). */

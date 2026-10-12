@@ -23,11 +23,24 @@ export type Sfx =
   | "boop"
   | "trash"
   | "catch"
-  | "art";
+  | "art"
+  // nostalgia pack
+  | "note"
+  | "stamp"
+  | "tick"
+  | "chaching"
+  | "star"
+  | "bell"
+  | "golden"
+  | "unlock"
+  | "lifelost"
+  | "finale";
 
 type MusicMode = "title" | "day" | "brunch" | "victory";
 
 const NOTE = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
+/** Major pentatonic steps: any run of them sounds like a tune, never a wrong note. */
+const PENTA = [0, 2, 4, 7, 9];
 
 class AudioEngine {
   ctx: AudioContext | null = null;
@@ -217,6 +230,69 @@ class AudioEngine {
       case "art":
         this.tone(900, 0.06, "sine", 0.08, 1300);
         this.tone(1200, 0.06, "sine", 0.06, 1600, 0.08);
+        break;
+      case "note": {
+        // one clear bell note per served order, climbing the scale as the combo grows (Peggle-style)
+        const k = Math.max(0, Math.min(arg - 1, 14));
+        const n = 67 + PENTA[k % 5] + 12 * Math.floor(k / 5);
+        this.tone(NOTE(n), 0.26, "triangle", 0.13);
+        this.tone(NOTE(n + 12), 0.18, "sine", 0.05, undefined, 0.005);
+        if (arg > 15) this.tone(NOTE(n + 19), 0.2, "sine", 0.035, undefined, 0.06);
+        break;
+      }
+      case "stamp": {
+        // a rubber stamp thump and a little chord that brightens with the tier
+        this.tone(150, 0.16, "sine", 0.28, 60);
+        this.noise(0.09, 0.16, 900, "lowpass", 200);
+        const root = 72 + Math.min(Math.max(arg, 1), 4) * 2;
+        [0, 4, 7, 12].forEach((s, i) => this.tone(NOTE(root + s), 0.22, "triangle", 0.09, undefined, 0.05 + i * 0.045));
+        break;
+      }
+      case "tick":
+        this.tone(1100 + Math.min(arg, 40) * 22, 0.035, "square", 0.035);
+        break;
+      case "chaching":
+        this.noise(0.05, 0.12, 4000, "highpass");
+        this.tone(NOTE(88), 0.09, "square", 0.06, undefined, 0.02);
+        this.tone(NOTE(95), 0.3, "square", 0.06, undefined, 0.09);
+        this.tone(NOTE(100), 0.32, "sine", 0.05, undefined, 0.09);
+        break;
+      case "star": {
+        const n = [76, 79, 84][Math.max(0, Math.min(arg, 2))];
+        this.tone(120, 0.14, "sine", 0.24, 55);
+        this.tone(NOTE(n), 0.5, "sine", 0.16);
+        this.tone(NOTE(n + 7), 0.4, "triangle", 0.06, undefined, 0.02);
+        this.tone(NOTE(n + 12), 0.3, "sine", 0.04, undefined, 0.04);
+        break;
+      }
+      case "bell":
+        // "last orders" pub bell: two strikes with bell-like inharmonic partials
+        for (const w of [0, 0.32]) {
+          this.tone(880, 0.9, "sine", 0.12, undefined, w);
+          this.tone(880 * 2.76, 0.55, "sine", 0.04, undefined, w);
+          this.tone(880 * 5.4, 0.3, "sine", 0.02, undefined, w);
+        }
+        break;
+      case "golden":
+        [84, 88, 91, 96, 100].forEach((n, i) => this.tone(NOTE(n), 0.2, "sine", 0.07, undefined, i * 0.06));
+        this.noise(0.5, 0.05, 6000, "highpass", 9000, 0.05);
+        break;
+      case "unlock":
+        // soft achievement "bloop" chord
+        this.tone(NOTE(79), 0.5, "sine", 0.12, undefined, 0, undefined, 0.02);
+        this.tone(NOTE(86), 0.5, "sine", 0.09, undefined, 0.09, undefined, 0.02);
+        this.tone(NOTE(91), 0.6, "triangle", 0.05, undefined, 0.18, undefined, 0.02);
+        break;
+      case "lifelost":
+        this.tone(NOTE(64), 0.18, "triangle", 0.12);
+        this.tone(NOTE(57), 0.3, "triangle", 0.12, undefined, 0.16);
+        break;
+      case "finale":
+        [72, 76, 79, 84].forEach((n, i) => {
+          this.tone(NOTE(n), i === 3 ? 0.7 : 0.16, "triangle", 0.12, undefined, i * 0.12);
+          this.tone(NOTE(n) * 1.005, i === 3 ? 0.6 : 0.14, "square", 0.03, undefined, i * 0.12);
+        });
+        this.noise(0.6, 0.05, 5000, "highpass", 9000, 0.36);
         break;
     }
   }

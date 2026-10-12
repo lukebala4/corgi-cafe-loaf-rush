@@ -129,6 +129,8 @@ Humans are original fictional people with varied skin tones, hair and clothes, s
 
 The save key stays `corgicafe.save.v1`. Existing progress, upgrades, aprons, décor and settings load unchanged (cosmetic ids kept, display names updated, "Corgi Orange" apron added). Unreadable saves are copied to `corgicafe.save.v1.backup`, a console warning is printed and the game starts from safe defaults. Saves with wrong field types are sanitised field by field.
 
+The rewards update adds optional fields with safe defaults: `seen` (sticker book), `ach` (achievement stickers), `endlessBest`, `bandits` (all-time pastry bandit catches) and `goldenWeek` (whether this week has had its golden guest). Older saves load with an empty book. "Play the week again" keeps the book, achievements, earned aprons and Endless best, and resets `goldenWeek`. Endless Brunch never writes coins, day progress or stars.
+
 ## 8. Verification
 
 Automated checks ran in headless Chromium with software WebGL (SwiftShader) using scripted steps against the dev build, plus a production build. The headless loop renders at roughly a quarter to a third of real speed, so motion was reviewed from recorded frame sequences rather than at true real-time speed on a physical device.
@@ -158,6 +160,21 @@ Automated checks ran in headless Chromium with software WebGL (SwiftShader) usin
 | All seven days played to completion at real speed by a human | Not tested | Days were entered via saves and scripted; difficulty tuning is untested by real play |
 | Character motion at true normal speed | Partially tested | Frame sequences from a slowed headless recording |
 | Production build and live deployment | See README and the deployment record in the final report | |
+
+### Rewards update (nostalgia pack)
+
+| Feature | Result | Evidence |
+| --- | --- | --- |
+| Rising combo note per served order; streak stamps at 3, 5, 8, 12 | Pass (visual); audio not listened to | Stamp screenshots; note pitch is driven by the combo count |
+| Tip coins arc into the counter, which rolls up with a cha-ching | Pass | Counter read 4 mid-roll and 21 when settled |
+| Today's Special pays double base price; HUD sticker and starred bubble | Pass | A 5-coin cake special paid 21 with its tip; badge visible |
+| Golden guest: glow, starry bubble, big tip, extra patience | Pass | Golden latte paid 103 at combo 5 and unlocked the Golden apron |
+| Last orders bell, door closes, finale slow motion, confetti, tidy-close bonus | Pass | Finale fired on the last waiting guest; reduced motion keeps normal speed |
+| Results count-up and staggered star slams | Pass | Mid and settled results screenshots |
+| Sticker Book: five tabs, found stickers and pencil outlines with hints | Pass | Desktop and phone landscape screenshots; Enter and Esc do not leak into the scene underneath |
+| 15 achievement toasts, three earned aprons in the shop (not purchasable) | Pass | Toasts on unlock; shop shows "Locked" and the earning rule |
+| Endless Brunch unlock, rising pace, three hearts, best score, Go again and Share | Pass | Three walkouts ended the run; best saved; coins and day unchanged |
+| Feel of the new pacing at real speed by a human | Not tested | Headless runs verify logic, not feel |
 
 ## 9. Known limitations and pitfalls
 

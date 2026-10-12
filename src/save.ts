@@ -21,6 +21,17 @@ export interface SaveData {
   tutorialDone: boolean;
   wins: number;
   settings: Settings;
+  // ---- collection + meta progress (added with the sticker book; all optional in older saves)
+  /** Sticker book discoveries, e.g. "role:regular", "item:latte", "staff:mochi", "moment:zoomies". */
+  seen: string[];
+  /** Unlocked achievement sticker ids. */
+  ach: string[];
+  /** Best Endless Brunch score (coins). */
+  endlessBest: number;
+  /** Pastry bandits caught, all time (for the Bandit catcher sticker). */
+  bandits: number;
+  /** A golden guest already visited during this week (guarantees one late in the week otherwise). */
+  goldenWeek: boolean;
 }
 
 const KEY = "corgicafe.save.v1";
@@ -40,11 +51,18 @@ function defaults(settings?: Settings): SaveData {
     tutorialDone: false,
     wins: 0,
     settings: settings ?? { music: true, sfx: true, muted: false, reducedMotion: reduced },
+    seen: [],
+    ach: [],
+    endlessBest: 0,
+    bandits: 0,
+    goldenWeek: false,
   };
 }
 
 const num = (v: unknown, lo: number, hi: number, dflt: number) =>
   typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, Math.floor(v))) : dflt;
+const strList = (v: unknown, max = 400) =>
+  [...new Set((Array.isArray(v) ? v : []).filter((x): x is string => typeof x === "string" && x.length > 0 && x.length < 40))].slice(0, max);
 
 /**
  * Load and migrate the save. Older V1 saves (dog-customer era) carry the same ids, so they load as-is;
@@ -99,6 +117,11 @@ function load(): SaveData {
       muted: typeof st.muted === "boolean" ? st.muted : base.settings.muted,
       reducedMotion: typeof st.reducedMotion === "boolean" ? st.reducedMotion : base.settings.reducedMotion,
     },
+    seen: strList(d.seen),
+    ach: strList(d.ach),
+    endlessBest: num(d.endlessBest, 0, 1e7, 0),
+    bandits: num(d.bandits, 0, 1e6, 0),
+    goldenWeek: d.goldenWeek === true,
   };
 }
 
@@ -115,9 +138,20 @@ export const save: { data: SaveData; write(): void; reset(): void; hasProgress()
     this.data = defaults(this.data.settings);
     this.write();
   },
-  /** Replay after the finale: keep cosmetics + settings + wins, restart the week. */
+  /** Replay after the finale: keep cosmetics, settings, wins and the sticker book; restart the week. */
   newRun() {
-    const keep = { aprons: this.data.aprons, apron: this.data.apron, decor: this.data.decor, wins: this.data.wins, settings: this.data.settings };
+    const dd = this.data;
+    const keep = {
+      aprons: dd.aprons,
+      apron: dd.apron,
+      decor: dd.decor,
+      wins: dd.wins,
+      settings: dd.settings,
+      seen: dd.seen,
+      ach: dd.ach,
+      endlessBest: dd.endlessBest,
+      bandits: dd.bandits,
+    };
     this.data = { ...defaults(this.data.settings), ...keep, tutorialDone: true };
     this.write();
   },

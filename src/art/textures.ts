@@ -617,6 +617,65 @@ export function buildTextures(scene: Phaser.Scene) {
     p.ellipse(48, 22, 42, 14, { fill: C.orange, w: 2.6 });
     p.ellipse(48, 20, 32, 9, { fill: "#f6a35e", w: 1.4 });
   });
+  // ---- nostalgia pack icons
+  // Today's Special: a gold rosette sticker with "x2"
+  doodle(scene, "icon_special", 40, 40, (p) => {
+    const pts: Pt[] = [];
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      const r = i % 2 ? 15 : 18.5;
+      pts.push([20 + Math.cos(a) * r, 20 + Math.sin(a) * r]);
+    }
+    p.shapeSharp(pts, { fill: "#f6c453", w: 2.2 });
+    p.circle(20, 20, 10.5, { fill: "#fffaf0", w: 1.6 });
+    const c = p.ctx;
+    c.fillStyle = C.ink;
+    c.font = 'bold 13px "Caveat Brush", cursive';
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillText("x2", 20, 21);
+  });
+  // last orders: a copper pub bell on a bracket
+  doodle(scene, "icon_bell", 56, 56, (p) => {
+    p.seg(10, 9, 46, 9, { w: 2.6 });
+    p.seg(28, 9, 28, 15, { w: 2.2 });
+    p.shape(
+      [
+        [17, 38],
+        [19, 24],
+        [28, 15],
+        [37, 24],
+        [39, 38],
+        [44, 42],
+        [12, 42],
+      ],
+      { fill: C.copper, w: 2.4 },
+    );
+    p.circle(28, 46, 4, { fill: "#f6c453", w: 1.8 });
+    p.seg(5, 26, 10, 29, { w: 1.6 });
+    p.seg(51, 26, 46, 29, { w: 1.6 });
+  });
+  // the sticker book: a little notebook with a corgi-face sticker on the cover
+  doodle(scene, "icon_book", 52, 52, (p) => {
+    p.rrect(9, 6, 36, 42, 5, { fill: C.orange, w: 2.4 });
+    p.seg(15, 7, 15, 47, { w: 1.6 });
+    p.circle(31, 22, 8, { fill: "#fffaf0", w: 1.6 });
+    p.dot(28.5, 21, 1.3);
+    p.dot(33.5, 21, 1.3);
+    p.rrect(22, 34, 18, 6, 3, { fill: "#fffaf0", w: 1.2 });
+  });
+  // Endless Brunch: an infinity loop drawn in one pen stroke, with a coffee bean
+  doodle(scene, "icon_endless", 60, 40, (p) => {
+    const pts: Pt[] = [];
+    for (let i = 0; i <= 40; i++) {
+      const t = (i / 40) * Math.PI * 2;
+      const s = 1 + Math.sin(t) ** 2;
+      pts.push([30 + (24 * Math.cos(t)) / s, 20 + (24 * Math.sin(t) * Math.cos(t)) / s]);
+    }
+    p.line(pts, { w: 5, color: C.coral });
+    p.line(pts, { w: 1.6 });
+    p.ellipse(30, 20, 4.5, 3.2, { fill: C.coffee, w: 1.2 });
+  });
   doodle(scene, "icon_archie", 64, 54, (p) => {
     p.ellipse(32, 40, 28, 9, { fill: C.orange, w: 2.2 });
     const c = p.ctx;

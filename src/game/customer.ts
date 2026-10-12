@@ -2,9 +2,10 @@ import Phaser from "phaser";
 import { COLORS as C, DOOR, DOOR_INSIDE, GROUP_SPOT, ItemId, ROLES, Role, SEATS } from "../config";
 import { ROLE_LOOKS } from "../art/humans";
 import { boil, bubbleTex, setBoil } from "../art/textures";
-import { txt } from "../ui";
+import { burst, floatText, txt } from "../ui";
 import { audio } from "../audio";
 import { save } from "../save";
+import { markSeen } from "../meta";
 import type { GameScene } from "../scenes/GameScene";
 
 export type CState = "enter" | "wait" | "happy" | "photo" | "angry" | "leave" | "gone";
@@ -13,6 +14,10 @@ export type CKind = "seat" | "group";
 let NEXT_ID = 1;
 const GROUP_OFFSETS = [-58, 0, 56];
 const SCALE = 0.78;
+const GOLDEN_LINES = {
+  order: ["Is this THE corgi café?!", "I've heard legends about this place.", "Surprise me. I'm feeling generous."],
+  happy: ["Worth every penny. Keep the change!", "Legendary. Have a golden tip!", "I'll tell all of Shoreditch."],
+};
 
 interface Member {
   look: string;
@@ -49,6 +54,12 @@ export class Customer {
   highlighted = false;
   wrongs = 0;
   watching = false; // reacting to zoomies (patience paused)
+  /** The item on this order that was Today's Special when it was placed (pays double). */
+  special: ItemId | null = null;
+  badges: (Phaser.GameObjects.Sprite | null)[] = [];
+  /** Rare golden guest: sparkles, golden bubble, a big tip and extra patience. */
+  golden = false;
+  private sparkT = 0;
   private watchSayT = 0;
 
   constructor(g: GameScene, role: Role, order: ItemId[], seat: number, patience: number, look?: string) {
@@ -75,8 +86,10 @@ export class Customer {
     // order bubble
     this.bubble = g.add.container(0, 0);
     const bk = bubbleTex(g, order.length);
-    this.bubble.add(boil(g, 0, 0, bk).setOrigin(0.5, 1));
+    this.bubbleBg = boil(g, 0, 0, bk).setOrigin(0.5, 1);
+    this.bubble.add(this.bubbleBg);
     const w = 24 + order.length * 52;
+    this.special = g.special && order.includes(g.special) ? g.special : null;
     order.forEach((it, i) => {
       const ix = -w / 2 + 38 + i * 52;
       const icon = boil(g, ix, -50, `item_${it}`).setScale(0.82);
@@ -84,12 +97,44 @@ export class Customer {
       this.icons.push(icon);
       this.checks.push(check);
       this.bubble.add([icon, check]);
+      // Today's Special: a small gold "x2" rosette on that item, so it reads at a glance
+      if (it === this.special) {
+        const b = boil(g, ix + 19, -70, "icon_special").setScale(0.62).setAngle(12);
+        this.bubble.add(b);
+        this.badges.push(b);
+      } else this.badges.push(null);
     });
     this.bar = g.add.graphics();
     this.bubble.add(this.bar);
     this.bubble.setVisible(false);
     if (this.kind === "group") this.speed = 105;
     this.path = [DOOR_INSIDE, ...g.nav.path(DOOR_INSIDE, this.seatPos)];
+  }
+
+  bubbleBg: Phaser.GameObjects.Sprite;
+
+  /** Turn this guest into the rare golden guest (call right after construction). */
+  makeGolden() {
+    if (this.kind === "group" || this.golden) return;
+    this.golden = true;
+    this.patience *= 1.4;
+    this.patienceMax *= 1.4;
+    // a warm golden glow behind them (their own colours stay as they are)
+    for (const m of this.members) {
+      const aura = this.g.add.image(m.dx, -78, "flash", 0).setTint(0xffc83d).setAlpha(0.75).setScale(1.25, 1.55);
+      this.root.addAt(aura, this.root.getIndex(m.sprite));
+      if (!save.data.settings.reducedMotion) this.g.tweens.add({ targets: aura, alpha: 0.45, scaleX: 1.1, yoyo: true, repeat: -1, duration: 700, ease: "Sine.inOut" });
+    }
+    this.bubbleBg.setTint(0xffe9a6);
+    const w = 24 + this.order.length * 52;
+    for (const [sx, sy] of [
+      [-w / 2 + 2, -64],
+      [w / 2 - 2, -60],
+    ]) {
+      const s = boil(this.g, sx, sy, "star").setScale(0.75);
+      this.bubble.add(s);
+      if (!save.data.settings.reducedMotion) this.g.tweens.add({ targets: s, scale: 0.45, angle: 40, yoyo: true, repeat: -1, duration: 520 });
+    }
   }
 
   get def() {
@@ -180,6 +225,7 @@ export class Customer {
     this.checks[idx].setVisible(true).setScale(0.3);
     this.g.tweens.add({ targets: this.checks[idx], scale: 1, duration: 200, ease: "Back.out" });
     this.icons[idx].setAlpha(0.45);
+    this.badges[idx]?.setAlpha(0.45);
     if (this.done.every(Boolean)) {
       this.state = this.role === "creator" ? "photo" : "happy";
       this.stateT = 0;
@@ -187,7 +233,7 @@ export class Customer {
       this.setMood("h");
       this.bubble.setVisible(false);
       this.ring.setVisible(false);
-      this.say(Phaser.Utils.Array.GetRandom(this.def.lines.happy), C.mintDark);
+      this.say(Phaser.Utils.Array.GetRandom(this.golden ? GOLDEN_LINES.happy : this.def.lines.happy), this.golden ? C.caramelDark : C.mintDark);
       this.delight();
       return true;
     }
@@ -316,6 +362,7 @@ export class Customer {
     this.root.setPosition(this.x, this.y);
     this.root.setDepth(this.y);
     const rm = save.data.settings.reducedMotion;
+    if (this.golden && this.state !== "gone") this.sparkle(dt, rm);
     for (const m of this.members) {
       const bob = moving ? Math.abs(Math.sin(this.walkT * 2.5)) * (rm ? 1 : 3) : 0;
       if (!this.g.tweens.isTweening(m.sprite)) {
@@ -361,9 +408,27 @@ export class Customer {
     this.bubble.setVisible(true);
     this.bubble.setScale(0.2);
     this.g.tweens.add({ targets: this.bubble, scale: 1, duration: 260, ease: "Back.out" });
-    this.say(Phaser.Utils.Array.GetRandom(this.def.lines.order));
-    audio.play("pop");
+    this.say(Phaser.Utils.Array.GetRandom(this.golden ? GOLDEN_LINES.order : this.def.lines.order), this.golden ? C.caramelDark : C.ink);
+    audio.play(this.golden ? "golden" : "pop");
+    markSeen(this.g, `role:${this.role}`);
+    if (this.golden) {
+      markSeen(this.g, "role:golden");
+      floatText(this.g, this.x, this.y - 230, "a golden guest!", C.caramelDark, 24, 30);
+      burst(this.g, this.x, this.y - 150, ["star", "star", "star_coral"], 10, 70);
+    }
     if (this.g.director.zooming) this.startZoom();
+  }
+
+  /** Golden guests twinkle: small stars pop near them every so often. */
+  private sparkle(dt: number, rm: boolean) {
+    this.sparkT -= dt;
+    if (this.sparkT > 0) return;
+    this.sparkT = rm ? 1.2 : 0.38;
+    const s = this.g.add
+      .image(this.x + Phaser.Math.Between(-34, 34), this.y - Phaser.Math.Between(30, 120), "star", 0)
+      .setScale(0.35)
+      .setDepth(this.y + 2);
+    this.g.tweens.add({ targets: s, scale: rm ? 0.35 : 0.7, angle: rm ? 0 : 90, alpha: 0, y: s.y - (rm ? 0 : 16), duration: 700, onComplete: () => s.destroy() });
   }
 
   destroy() {

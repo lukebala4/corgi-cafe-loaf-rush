@@ -474,13 +474,17 @@ export const DASH_COOLDOWN = [1.5, 1.15, 0.9, 0.7];
 export const PATIENCE_MULT = [1, 1.2, 1.4, 1.6];
 export const ASSIST_SPEED = [210, 210, 300];
 
-export type ApronId = "classic" | "mint" | "coral" | "polka" | "bowtie";
-export const APRONS: { id: ApronId; name: string; cost: number; color: string }[] = [
+export type ApronId = "classic" | "mint" | "coral" | "polka" | "bowtie" | "spotless" | "gold" | "legend";
+/** Aprons with `earn` are never sold: they are rewards for the named achievement sticker. */
+export const APRONS: { id: ApronId; name: string; cost: number; color: string; earn?: string }[] = [
   { id: "classic", name: "Classic", cost: 0, color: "#ffffff" },
   { id: "mint", name: "Sage", cost: 40, color: "#a3ae8f" },
   { id: "coral", name: "Corgi Orange", cost: 40, color: "#f0702a" },
   { id: "polka", name: "Polka Loaf", cost: 70, color: "#fff2c2" },
   { id: "bowtie", name: "Fancy Bowtie", cost: 90, color: "#3b5a8a" },
+  { id: "spotless", name: "Spotless", cost: 0, color: "#bfe8dc", earn: "spotless" },
+  { id: "gold", name: "Golden", cost: 0, color: "#f2c14e", earn: "golden" },
+  { id: "legend", name: "Brunch Legend", cost: 0, color: "#c8506a", earn: "legend" },
 ];
 
 export type DecorId = "plant" | "bunting" | "lights" | "portrait" | "power" | "events" | "stickers" | "archie";

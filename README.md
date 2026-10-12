@@ -24,6 +24,20 @@ While you play, a recipe strip at the bottom of the screen shows each ordered it
 
 Items unlock day by day. Real GBP prices and the full 61-item London menu are in the in-game **Menu** (title screen or pause menu); game coins are a separate fictional balance.
 
+## Little rewards
+
+Small touches inspired by 2000s and 2010s casual games, kept kind: no login streaks, no energy timers, nothing that punishes time away.
+
+- **Combo notes and stamps.** Each order in a streak plays the next note up the scale. Streaks of 3, 5, 8 and 12 slam down an ink stamp (`Nice!`, `Pawsome!`, `LOAF-TASTIC!`, `UNSTOPPABLE LOAF!`).
+- **Coins you can see.** Tips arc up into the coin counter, which rolls up with a cha-ching.
+- **Today's Special.** Each shift has one special item (sticker by the pause button, star on matching order bubbles). Its base price pays double.
+- **Golden guests.** Roughly once a week a guest arrives with a golden glow and a starry bubble. They wait a little longer and tip big.
+- **Last orders.** Twenty seconds before closing the bell rings and the door stops opening. Serve everyone still waiting for a slow-motion confetti finish and a tidy-close bonus.
+- **Results.** Coins count up, stars slam in one at a time, and a short line tells you how close the next star was.
+- **Sticker Book** (title screen or pause menu). Guests, staff corgis, menu items and café moments you have met appear as stickers; the rest stay as pencil outlines with a hint.
+- **Achievements.** 15 achievement stickers pop up as small toasts. Three of them unlock aprons that coins cannot buy: Spotless, Golden and Brunch Legend.
+- **Endless Brunch** (unlocks after surviving Sunday Brunch). No clock, customers keep coming faster, three walkouts end the run. Your best score is saved and shareable. It does not change your week, coins or stars.
+
 ## Controls
 
 | Action | Keyboard | Touch |

@@ -6,6 +6,8 @@ import { burst, button, scrap, txt } from "../ui";
 import { CorgiRig } from "../game/corgi";
 import { audio } from "../audio";
 import { save } from "../save";
+import { inkStamp } from "../fx";
+import { unlock } from "../meta";
 
 export class VictoryScene extends Phaser.Scene {
   constructor() {
@@ -17,8 +19,10 @@ export class VictoryScene extends Phaser.Scene {
     audio.music("victory");
     audio.play("win");
     const d = save.data;
+    const firstWin = d.wins === 0;
     d.wins += 1;
     save.write();
+    unlock(this, "week");
     const stars = DAYS.reduce((s, _, i) => s + (d.stars[i] ?? 0), 0);
     scrap(this, 640, 250, 760, 300, -1, true);
     txt(this, 640, 150, "Best Corgi Cafe in Shoreditch!", 60, C.caramel, true, { stroke: C.ink, strokeThickness: 4 });
@@ -59,6 +63,11 @@ export class VictoryScene extends Phaser.Scene {
       loop: true,
       callback: () => burst(this, Phaser.Math.Between(150, 1130), Phaser.Math.Between(80, 420), ["star", "star_mint", "star_coral", "heart"], 10, 90),
     });
+    // the post-game mode: Endless Brunch (no clock, three walkouts end the run, chase a best score)
+    const endless = button(this, 640, 432, 360, 56, firstWin ? "NEW: Endless Brunch →" : "Endless Brunch →", C.coral, () => this.scene.start("Game", { endless: true }), 28).setDepth(50);
+    txt(this, 640, 474, "No clock. Three walkouts end the run. Chase your best score.", 19, C.ink, true, { stroke: "#fffaf0", strokeThickness: 4 }).setDepth(50);
+    if (firstWin) this.time.delayedCall(900, () => inkStamp(this, 880, 410, "UNLOCKED!", 3, undefined, 60));
+    void endless;
     button(this, 860, 690, 300, 52, "Play the week again", C.mint, () => {
       save.newRun();
       this.scene.start("Game", { day: 0 });

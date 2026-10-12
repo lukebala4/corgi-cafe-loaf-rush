@@ -5,6 +5,7 @@ import { CorgiRig } from "./corgi";
 import { save } from "../save";
 import { burst, puff, txt } from "../ui";
 import { audio } from "../audio";
+import { markSeen, unlock } from "../meta";
 import type { GameScene } from "../scenes/GameScene";
 import type { Customer } from "./customer";
 import type { Station } from "./station";
@@ -222,13 +223,16 @@ export class EventDirector {
     const g = this.g;
     if (id === "group") {
       if (!g.spawnGroup()) return;
+      markSeen(g, "moment:group");
       g.banner("VISITING GROUP", "A whole team from up the road. One big order for the window bar!", C.orange);
       this.active = "group";
       audio.play("event");
       return;
     }
     this.active = id;
+    markSeen(g, `moment:${id}`);
     if (id === "zoomies") {
+      markSeen(g, "staff:zoomies");
       g.banner("ZOOMIES!", "The staff corgis are doing laps! Dash to dodge. Customers are too busy filming to get impatient.", C.coral);
       for (const c of g.customers) c.startZoom();
       const loop = g.zoomLoop;
@@ -241,6 +245,7 @@ export class EventDirector {
         this.pups.push(p);
       }
     } else if (id === "nap") {
+      markSeen(g, "staff:mochi");
       // nap in the counter opening nearest to the player: that's the useful one
       let di = 0;
       let bd = Infinity;
@@ -260,6 +265,7 @@ export class EventDirector {
       g.world.setDynamic("nap", { x: d.x0 - 4, y: PASS_Y - 8, w: d.x1 - d.x0 + 8, h: PASS_H + 16 });
       g.banner("NAP ATTACK", "Mochi fell asleep in a counter opening. Boop 3x to wake, or go around.", "#9fc3e6");
     } else if (id === "heist") {
+      markSeen(g, "staff:bandit");
       const rig = new CorgiRig(g, DOOR.x, DOOR.y, 0.66, "none", "red");
       rig.addHeadwear("mask", 4, 8);
       const useCake = g.menu.includes("cake") && Math.random() < 0.4;
@@ -330,6 +336,7 @@ export class EventDirector {
     this.g.floatAt(n.x, n.y - 40, n.boops >= 3 ? "awake! (+5)" : `boop ${n.boops}/3`, C.mintDark);
     if (n.boops >= 3) {
       this.g.addCoins(5, n.x, n.y - 60);
+      unlock(this.g, "wakeup");
       this.endNap();
     }
   }
@@ -392,6 +399,9 @@ export class EventDirector {
         g.floatAt(b.x, b.y - 70, "CAUGHT! +15", C.mintDark);
         g.addCoins(15, b.x, b.y - 40);
         g.stats.heists++;
+        save.data.bandits++;
+        save.write();
+        if (save.data.bandits >= 5) unlock(g, "bandits");
         g.player.rig.celebrate();
         if (g.player.items.length < g.player.capacity) g.giveItem(b.lootId, true);
         b.loot?.destroy();

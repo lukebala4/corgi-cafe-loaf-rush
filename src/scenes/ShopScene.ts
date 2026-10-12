@@ -5,11 +5,14 @@ import { CorgiRig } from "../game/corgi";
 import { burst, button, floatText, scrap, txt } from "../ui";
 import { audio } from "../audio";
 import { save } from "../save";
+import { ACHIEVEMENTS, unlock } from "../meta";
 
 export class ShopScene extends Phaser.Scene {
   private coinsT!: Phaser.GameObjects.Text;
   /** Decor panel page (kept across the restart after a purchase). */
   private decorPage = 0;
+  /** Apron being tried on in the preview. */
+  private apronSel: string = "classic";
   constructor() {
     super("Shop");
   }
@@ -58,36 +61,66 @@ export class ShopScene extends Phaser.Scene {
       }
     });
 
-    // ---------------- cosmetics: aprons
+    // ---------------- cosmetics: aprons (tap a swatch to try it on; three are earned from stickers)
     const ap = scrap(this, 360, 520, 600, 190, -0.8, false);
     void ap;
-    txt(this, 360, 445, "Aprons", 30, C.ink, true);
+    txt(this, 400, 445, "Aprons", 30, C.ink, true);
     const preview = new CorgiRig(this, 135, 560, 1.1, d.apron);
     preview.setDepth(10);
     this.time.addEvent({ delay: 16, loop: true, callback: () => preview.animate(0.016, 0, 0, 1) });
-    APRONS.forEach((a, i) => {
-      const x = 270 + i * 92;
-      const owned = d.aprons.includes(a.id);
-      const worn = d.apron === a.id;
-      const sw = this.add.circle(x, 510, 22, Phaser.Display.Color.HexStringToColor(a.color).color).setStrokeStyle(worn ? 5 : 3, worn ? 0x4fae8c : 0x2b2622);
-      if (a.id === "polka") for (const [dx, dy] of [[-8, -6], [6, -2], [-2, 9]]) this.add.circle(x + dx, 510 + dy, 3, 0xf2786b);
-      if (a.id === "bowtie") this.add.image(x, 510, "bowtie", 0);
-      void sw;
-      txt(this, x, 545, a.name, 15, C.inkSoft);
-      const label = worn ? "worn" : owned ? "wear" : `${a.cost}`;
-      const b = button(this, x, 582, 78, 34, label, worn ? "#efe5cc" : owned ? "#f6c453" : C.mint, () => {
+    this.apronSel = d.apron;
+    const rack = this.add.container(0, 0);
+    const drawRack = () => {
+      rack.removeAll(true);
+      const sel = APRONS.find((a) => a.id === this.apronSel) ?? APRONS[0];
+      preview.setApron(sel.id);
+      APRONS.forEach((a, i) => {
+        const x = 226 + i * 56;
+        const y = 496;
+        const owned = d.aprons.includes(a.id);
+        const worn = d.apron === a.id;
+        const picked = a.id === sel.id;
+        if (picked) rack.add(this.add.circle(x, y, 27, 0xf6c453, 0.55));
+        const sw = this.add.circle(x, y, 19, Phaser.Display.Color.HexStringToColor(a.color).color).setStrokeStyle(worn ? 5 : 3, worn ? 0x4fae8c : 0x2b2622);
+        if (!owned && a.earn) sw.setAlpha(0.5);
+        rack.add(sw);
+        if (a.id === "polka") for (const [dx, dy] of [[-7, -5], [5, -2], [-2, 8]]) rack.add(this.add.circle(x + dx, y + dy, 2.6, 0xf2786b));
+        if (a.id === "bowtie") rack.add(this.add.image(x, y, "bowtie", 0).setScale(0.85));
+        if (a.earn) rack.add(this.add.image(x + 15, y - 15, owned ? "star" : "star_empty", 0).setScale(0.62));
+        const hit = this.add.zone(x, y, 52, 56).setInteractive({ useHandCursor: true });
+        hit.on("pointerdown", () => {
+          audio.play("click");
+          this.apronSel = a.id;
+          drawRack();
+        });
+        rack.add(hit);
+      });
+      // details for the swatch being tried on
+      const owned = d.aprons.includes(sel.id);
+      const worn = d.apron === sel.id;
+      const ach = sel.earn ? ACHIEVEMENTS.find((x) => x.id === sel.earn) : undefined;
+      rack.add(txt(this, 214, 546, `${sel.name} apron`, 24, C.ink, true).setOrigin(0, 0.5));
+      const status = worn ? "Wearing it now." : owned ? (ach ? `Earned: ${ach.name} sticker.` : "Yours to wear.") : ach ? `Earn it: ${ach.desc}` : `${sel.cost} coins.`;
+      rack.add(txt(this, 214, 580, status, 16, ach && !owned ? C.coral : C.inkSoft, false, { wordWrap: { width: 300 } }).setOrigin(0, 0.5));
+      const label = worn ? "worn" : owned ? "Wear" : ach ? "Locked" : `Buy · ${sel.cost}`;
+      const b = button(this, 588, 560, 118, 42, label, worn ? "#efe5cc" : owned ? "#f6c453" : ach ? "#efe5cc" : C.mint, () => {
         if (worn) return;
         if (!owned) {
-          if (d.coins < a.cost) return;
-          d.coins -= a.cost;
-          d.aprons.push(a.id);
+          if (ach || d.coins < sel.cost) return;
+          d.coins -= sel.cost;
+          d.aprons.push(sel.id);
         }
-        d.apron = a.id;
+        d.apron = sel.id;
         save.write();
-        this.bought(x, 510);
-      }, 18);
-      if (!owned && d.coins < a.cost) b.setEnabled(false);
-    });
+        this.bought(588, 520);
+      }, 20);
+      if ((!owned && (ach || d.coins < sel.cost)) || worn) b.setEnabled(worn);
+      if (worn) b.disableInteractive();
+      rack.add(b);
+    };
+    drawRack();
+    // owning every decoration earns a sticker (checked here so the toast survives the shop refresh)
+    if (DECOR.every((x) => d.decor.includes(x.id))) unlock(this, "decked");
 
     // ---------------- decorations (4 per page)
     const dp = scrap(this, 960, 520, 470, 190, 1.2, false);
